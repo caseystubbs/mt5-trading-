@@ -1,10 +1,28 @@
+## 2026-04-07
+
+### [feature] Auto-generated daily summary page
+
+New /summary page generates a complete daily trading report with grade, analysis, trade details, and event timeline. Navigate between days at mt5.freedomincomeoptions.com/summary.
+
+### [fix] Daily log API no longer returns "Not Found"
+
+Events stored in UTC were not matching EST date queries. Fixed date lookup to handle timezone offset.
+
+### [wip] First full day on VPS with webhook pipeline
+
+EA found 7 valid SHORT setups on PDL breakdown but all rejected — FixedLots was 0.01 instead of broker minimum 1.0. Config fix pending for tomorrow.
+
+### [deploy] Custom domain live at mt5.freedomincomeoptions.com
+
+Trade journal dashboard accessible at mt5.freedomincomeoptions.com with SSL.
+
 ## 2026-04-06
 
 ### [feature] Real-time trade dashboard live on Railway
 
 EA now sends every trade event to a live dashboard you can check from your phone. Shows today's trades, P&L, win rate, and daily history.
 
-Dashboard: https://web-production-4c92.up.railway.app/
+Dashboard: https://mt5.freedomincomeoptions.com/
 
 ### [feature] Automatic pattern tracking
 

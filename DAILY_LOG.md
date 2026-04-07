@@ -2,6 +2,74 @@
 
 This file is auto-updated after each trading day by the push-journal.ps1 script.
 Individual daily reports are also saved in the `daily-logs/` folder.
+Live daily summaries: https://mt5.freedomincomeoptions.com/summary
+
+---
+
+## 2026-04-07 — Day 3
+
+**EA Version:** v2.8 | **Trend:** Bullish (Above 10 EMA) | **Symbol:** SPXUSD
+**Grade:** Config Error
+
+### Session overview
+
+| Metric | Value |
+|--------|-------|
+| Setups found | 7 |
+| Setups rejected | 7 |
+| Trades taken | 0 |
+| Wins / Losses | 0 / 0 |
+| Total P&L | $0.00 |
+
+### Levels
+
+| Level | Price |
+|-------|-------|
+| PDH | 6623.7 |
+| PDL | 6581.7 |
+| PM High | 6631.9 |
+| PM Low | 6568.4 |
+| OR High | 6603.9 |
+| OR Low | 6576.2 |
+
+### What happened
+
+EA found 7 valid SHORT setups on PDL (6581.7) from 9:45-11:25 EST. Every single one was rejected with Error 4756 (TRADE_SEND_FAILED) because FixedLots was set to 0.01 but the Coinexx broker requires minimum 1.0 lot.
+
+Price dropped from ~6580 at 9:45 EST to ~6545 by 10:10 EST — a 35-point move. The first setup at 9:45 would have had entry ~6577.7, stop at 6584.2 (candle high), risk of 6.5 points. The 2R target at ~6564.7 would have been hit within 25 minutes.
+
+### Setups (all SHORT on PDL, all rejected Error 4756)
+
+| Time EST | Candle Close | Close % | Bid |
+|----------|-------------|---------|-----|
+| 09:45 | 6577.4 | 15.0% | 6577.7 |
+| 10:00 | 6567.9 | 2.5% | 6567.7 |
+| 10:05 | 6562.4 | 22.2% | 6562.2 |
+| 10:10 | 6550.9 | 26.2% | 6550.9 |
+| 11:00 | 6554.8 | 15.2% | 6554.8 |
+| 11:05 | 6546.2 | 13.1% | 6545.9 |
+| 11:25 | 6551.4 | 3.0% | 6551.2 |
+
+### Key observations
+
+- All 7 candle close percentages were low (2.5-26%) = strong bearish momentum, closes near lows
+- This was a counter-trend trade (daily trend Bullish, trading SHORT) — but the breakdown was real
+- EA kept retrying same setup every 5 min because failed orders don't count as "trade taken"
+- Webhook pipeline working correctly — all events visible on Railway dashboard in real-time
+- First day with /summary page auto-generating reports
+
+### Issues
+
+- **FixedLots = 0.01** — must change to 1.0 before tomorrow (CRITICAL)
+- Failed order retries not blocked by OneTradePerDay (order never executed so flag never set)
+- Stop placement would have been excellent today: 6.5 pt risk for 13+ pt reward
+
+### Lessons learned
+
+- The strategy found the right trade at the right time — the signal is working
+- Infrastructure (webhook, dashboard, summary) all functioning correctly
+- Configuration errors (lot size) are the only thing preventing execution
+- Counter-trend setups can be very profitable — don't enable trend filter yet
 
 ---
 

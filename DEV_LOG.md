@@ -6,17 +6,29 @@ Automated S&P 500 breakout trading system that trades liquidity sweeps at key in
 
 **Stack:** MQL5 EA (MetaTrader 5) → FastAPI (Railway) → PostgreSQL → Dashboard
 
-**Live dashboard:** https://web-production-4c92.up.railway.app/
+**Live dashboard:** https://mt5.freedomincomeoptions.com/
+
+**Daily summary:** https://mt5.freedomincomeoptions.com/summary
 
 **Infrastructure:**
-- EA runs on Windows VPS (Contabo/Hetzner) with MT5
+- EA runs on Windows VPS with MT5 (Coinexx demo, SPXUSD)
 - Real-time trade events sent via WebRequest to Railway API
 - PostgreSQL stores all events, daily summaries, patterns, changelog
-- Dashboard accessible from phone/laptop anywhere
+- Dashboard + daily summary page accessible from phone/laptop anywhere
 - Nightly PowerShell script pushes CSV journals + daily logs to GitHub
 - Pattern analysis auto-tracks win rate by level, direction, trend alignment, candle strength
 
 ## Changelog
+
+### API v1.1 — 2026-04-07
+**Type:** Feature + bug fix
+- Added `/summary` and `/summary/{date}` pages — auto-generated daily trading reports
+- Report includes: day grade (A/B/C/D), auto-analysis, levels, trade cards, event timeline, notes, lessons
+- Date navigation between available trading days
+- Fixed `/api/daily-log-markdown/{date}` returning "Not Found" — UTC/EST date mismatch in query
+- Events now queried across date boundaries to handle UTC offset
+- CORS middleware added for browser-based API testing
+- Custom domain live: mt5.freedomincomeoptions.com
 
 ### v2.8 — 2026-04-06
 **Type:** Feature (major)
@@ -24,10 +36,9 @@ Automated S&P 500 breakout trading system that trades liquidity sweeps at key in
 - New inputs: `UseWebhook`, `WebhookURL`, `WebhookAPIKey`
 - 8 webhook functions mirror all CSV log events (DAILY_OPEN, SETUP_FOUND, SETUP_REJECTED, TRADE_OPENED, TRADE_CLOSED, etc.)
 - Non-blocking 5-second timeout so webhooks never delay trading
-- CORS middleware added for browser-based testing
 - Railway API deployed with PostgreSQL: trade events, daily summaries, pattern tracking, changelog
-- Dashboard live at https://web-production-4c92.up.railway.app/
-- API endpoints: /api/event, /api/stats, /api/today, /api/daily-log/{date}, /api/cumulative-log
+- Dashboard live at https://mt5.freedomincomeoptions.com/
+- API endpoints: /api/event, /api/stats, /api/today, /api/daily-log/{date}, /api/cumulative-log, /summary
 - Auto-generates daily markdown reports for GitHub
 - Pattern analysis: win rate by level, direction, trend alignment, candle strength, rejection reasons
 - **Reason:** Need remote monitoring while travelling + systematic pattern tracking for improvement
@@ -196,16 +207,20 @@ Automated S&P 500 breakout trading system that trades liquidity sweeps at key in
 |------|---------|-------|--------|------|-----|-----------------|
 | 2026-04-01 | v2.5 | Bullish | 2 | 1 | ~+$14 | First live trade day. Stop too tight on trade 1, trade 2 hit 1R+ |
 | 2026-04-02 | v2.6 | Bullish | 8 | 0 | -$56.70 | OneTradePerDay broken, journal reported fake P&L. All 8 trades hit SL |
+| 2026-04-07 | v2.8 | Bullish | 0 | 0 | $0.00 | 7 SHORT setups on PDL all rejected — FixedLots=0.01 vs broker min 1.0. Would have caught 35pt drop |
 
 ---
 
 ## Next improvements planned
 
-1. **Stop placement options** — test level-based stop vs candle-low stop vs ATR-based stop
-2. **Multi-instrument** — add NQ100, Russell 2000
-3. **Backtest** — run MT5 strategy tester over 2 years of data
-4. **Trend filter** — enable UseDailyTrendFilter and track if it improves win rate
-5. **Volatility filter** — skip low-ATR days where breakouts fail more often
-6. **VPS setup** — deploy MT5 on Contabo/Hetzner Windows VPS for 24/5 operation
-7. **GitHub auto-push** — nightly script pushes journals + daily logs to repo
-8. **Improve stop logic** — consider ATR-based stops or level-based stops instead of candle low
+1. ~~**VPS setup**~~ ✅ MT5 running on VPS with Coinexx demo
+2. ~~**Webhook pipeline**~~ ✅ Real-time events flowing to Railway API
+3. ~~**Dashboard**~~ ✅ Live at mt5.freedomincomeoptions.com
+4. ~~**Daily summary page**~~ ✅ Auto-generated at /summary
+5. **Fix FixedLots** — change from 0.01 to 1.0 so trades actually execute (CRITICAL for tomorrow)
+6. **Stop placement options** — test level-based stop vs candle-low stop vs ATR-based stop
+7. **Multi-instrument** — add NQ100, Russell 2000
+8. **Backtest** — run MT5 strategy tester over 2 years of data
+9. **Volatility filter** — skip low-ATR days where breakouts fail more often
+10. **GitHub auto-push** — nightly script pushes journals + daily logs to repo
+11. **Improve stop logic** — consider ATR-based stops or level-based stops instead of candle low
