@@ -988,7 +988,16 @@ ul{{padding-left:20px;color:#ccc;line-height:1.8}}
 .grade{{font-size:48px;font-weight:500;text-align:center;padding:20px}}
 a{{color:#60a5fa}}
 .nav a:hover{{background:#333!important}}
+.nav-tabs{{display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid #333}}
+.nav-tabs a{{padding:10px 20px;color:#888;text-decoration:none;font-size:14px;border-bottom:2px solid transparent}}
+.nav-tabs a:hover{{color:#fff;background:#111}}
+.nav-tabs a.active{{color:#fff;border-bottom:2px solid #60a5fa}}
 </style></head><body>
+
+<div class="nav-tabs">
+    <a href="/">Dashboard</a>
+    <a href="/summary" class="active">Daily summary</a>
+</div>
 
 <h1>Daily trading summary</h1>
 <div class="subtitle">{target_date} | EA v{s.get('ea_version', '2.8')} | {s.get('symbol', 'SPXUSD')}</div>
@@ -1137,7 +1146,17 @@ table{{width:100%;border-collapse:collapse;font-size:13px}}
 th{{text-align:left;color:#888;font-weight:400;padding:8px;border-bottom:1px solid #222}}
 td{{padding:8px;border-bottom:1px solid #1a1a1a}}
 .tag{{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:#222;color:#aaa}}
+.nav-tabs{{display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid #333}}
+.nav-tabs a{{padding:10px 20px;color:#888;text-decoration:none;font-size:14px;border-bottom:2px solid transparent}}
+.nav-tabs a:hover{{color:#fff;background:#111}}
+.nav-tabs a.active{{color:#fff;border-bottom:2px solid #60a5fa}}
 </style></head><body>
+
+<div class="nav-tabs">
+    <a href="/" class="active">Dashboard</a>
+    <a href="/summary">Daily summary</a>
+</div>
+
 <h1>EST Liquidity Breakout EA — Trade Journal</h1>
 
 <div class="grid">
