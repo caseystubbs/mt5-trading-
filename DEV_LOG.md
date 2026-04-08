@@ -20,6 +20,30 @@ Automated S&P 500 breakout trading system that trades liquidity sweeps at key in
 
 ## Changelog
 
+### v2.8 session — 2026-04-08
+**Type:** Strategy review (critical learning day)
+- First day with trades executing end to end via webhook pipeline
+- 7 trades taken (OneTradePerDay intentionally OFF by Casey)
+- 1 win (+$21.60 at 2R target), 6 losses, net -$32.00
+- First ever 2R target hit (Trade 8: LONG PDH continuation)
+- Trade 3 (SHORT PML) hit 1R, moved to BE, closed at BE -$0.30 — would have been big winner without BE
+- Error 4756 appeared once mid-session (Trade 4) — may be related to partial close attempt on previous trade
+- Navigation tabs added to dashboard and summary pages
+
+**Strategy insights from Casey's review:**
+- Current entry logic ("strong candle above level = buy") is fundamentally wrong
+- PDH at 6628.6 with price at 6780 doesn't mean every bullish candle is a PDH breakout
+- PDH breakout is a CAMPAIGN — the initial break, the consolidation, then the continuation
+- Trade 8 won because it caught the continuation wave after consolidation, not because of a simple candle pattern
+- Levels have two roles: BIAS (PDH/PDL tell you direction) and TRIGGER (PML/ORL/ORH/PMH are where trades happen)
+- Bounce setups: price comes to a level and reverses (PDH as support, PML as support, etc.)
+- Breakout setups: price crosses through a level (PMH breakout, PML breakdown, etc.)
+- Stop placement should be based on levels (above/below the trigger level) not candle highs/lows
+- Breakeven at 1R needs evaluation — may be killing winners. Track "no BE" hypothetical P&L
+- Each setup needs a human-readable name, daily trade number, and chart label
+- DO NOT add filters without understanding the entry logic first
+- The trend display is observation only — not a filter
+
 ### API v1.1 — 2026-04-07
 **Type:** Feature + bug fix
 - Added `/summary` and `/summary/{date}` pages — auto-generated daily trading reports
@@ -148,15 +172,97 @@ Automated S&P 500 breakout trading system that trades liquidity sweeps at key in
 
 ## Trading rules
 
-**Entry:** M5 candle closes beyond a key level by MinimumBreakoutPrice ($2.50) with a strong close (top/bottom 30% of candle range)
+**Entry (current v2.8 — being redesigned):** M5 candle closes beyond a key level by MinimumBreakoutPrice ($2.50) with a strong close (top/bottom 30% of candle range)
 
-**Levels (priority order):** PDH → PM High → OR High (longs), PDL → PM Low → OR Low (shorts)
+**Stop (current):** Breakout candle's low (longs) or high (shorts)
 
-**Stop:** Breakout candle's low (longs) or high (shorts)
+**Stop (planned):** Based on levels — stop goes below/above the trigger level with a buffer, not at the candle extreme
 
 **Targets:** 1R = same distance as stop, 2R = 2x distance
 
 **Management:** At 1R: close 50% + move stop to breakeven. At 2R: close remaining. Force close at 15:55 EST.
+
+**Management (under review):** Breakeven at 1R may be killing winners. Tracking "no BE" hypothetical P&L to evaluate.
+
+---
+
+## Casey's trading framework (growing daily)
+
+*This section captures Casey's market understanding as it develops. The EA should be built to match this framework, not the other way around.*
+
+### Level roles
+
+Levels serve two distinct purposes:
+
+**Bias levels (where are we in the bigger picture):**
+- Price above PDH = bullish day bias
+- Price below PDL = bearish day bias
+- These tell you WHICH DIRECTION to look for trades, not where to enter
+
+**Trigger levels (where do trades actually happen):**
+- PMH, PML, ORH, ORL = intraday levels where price interacts
+- PDH and PDL are ALSO triggers when price is actually near them and crossing through
+- A trade needs a trigger — being above a bias level is not enough
+
+### Setup types (named)
+
+**Breakout/Breakdown setups** — price crosses through a level:
+- PDH Breakout Long
+- PDL Breakdown Short
+- PMH Breakout Long
+- ORH Breakout Long
+- PML Breakdown Short
+- ORL Breakdown Short
+
+**Bounce setups** — price comes to a level and reverses:
+- PDH Bounce Long (price pulls back to PDH as support)
+- PDL Bounce Short (price rallies up to PDL as resistance)
+- PML Bounce Long
+- ORL Bounce Long
+- PMH Bounce Short
+- ORH Bounce Short
+
+### Key principles learned
+
+**From Apr 8 — PDH continuation:**
+- A PDH breakout is a CAMPAIGN, not a single candle. The initial break launches price, then it consolidates, then the continuation wave comes.
+- Trade 8 won because it caught the continuation after consolidation — price based around 6757, then pushed to 6789.
+- The consolidation zone after a big move IS the setup forming. The breakout of the consolidation is the trigger.
+
+**From Apr 8 — entry context:**
+- Just being above PDH doesn't mean buy every strong candle. Price at 6780 with PDH at 6628 = bullish bias, but you need a TRIGGER (bounce off support, breakout of consolidation, crossover of PMH/ORH).
+- The EA currently has no concept of "is price actually near this level?" — it treats every candle above PDH as a breakout.
+
+**From Apr 8 — PML breakdown:**
+- Trade 3 (SHORT PML) was a correct setup — price broke through PM Low with conviction.
+- It hit 1R, moved to BE, then got stopped at BE for -$0.30. Without BE it would have been a big winner.
+- Need to track "no BE" outcomes to evaluate whether breakeven helps or hurts.
+
+**From Apr 8 — level relationships:**
+- When PML breaks and PDL is 130 points below, there's room to run → good short opportunity.
+- The distance between the trigger level and the next support/resistance below/above tells you the potential reward.
+
+**From Apr 8 — stops:**
+- Stop placement should be based on the level itself (above/below the trigger level) not the candle high/low.
+- If you short a PML breakdown, the trade is wrong when price reclaims PML → stop goes above PML.
+- Candle-based stops are arbitrary. Level-based stops have market logic.
+
+**From Apr 1 — stop distance:**
+- Trade 1 had a 9.8pt stop, got clipped. Trade 2 had 21.2pt stop, worked. Wider stops survive better.
+
+**From Apr 2 — OneTradePerDay:**
+- Casey intentionally turns this ON or OFF depending on the day. The setting works correctly.
+- When OFF, the EA can take multiple trades — this is by design.
+
+### Things we don't know yet (track and learn)
+
+- [ ] Does breakeven at 1R help or hurt overall? (Track "no BE" hypothetical)
+- [ ] Which setup types have the highest win rate?
+- [ ] Does candle close strength (90%+ vs 70%) predict winners?
+- [ ] Do earlier setups (9:45-10:15) win more than later ones?
+- [ ] How often does a PDH breakout campaign have a profitable continuation trade?
+- [ ] What's the optimal stop buffer beyond a level? ($2? $3? $5?)
+- [ ] Does the distance between trigger level and next level predict trade outcome?
 
 ---
 
@@ -169,14 +275,15 @@ Automated S&P 500 breakout trading system that trades liquidity sweeps at key in
 - **OneTradePerDay flag resets on EA restart** — Fixed in v2.7 with proper state management
 - **Journal P&L can be fictional** — Fixed in v2.7 by reading actual broker deal history
 - **Partial close fails at minimum lot size** — Logged but not fixed (broker min = 1.0 lot, can't split)
+- **Error 4756 intermittent** — May be related to partial close attempt leaving position in liminal state (Apr 8, Trade 4)
+- **"PDH breakout" 150pts above PDH is not a breakout** — No market context. Need trigger level or consolidation pattern.
 
 ### Pending observations (needs more data)
 - [ ] Stop placement too tight — breakout bar low gets clipped on normal pullback (seen on Apr 1)
-- [ ] PDH breakouts may have different win rate than OR High breakouts — tracking via API
-- [ ] Counter-trend trades (e.g. long when daily trend bearish) — need data on win rate
-- [ ] Strong close % (90%+ vs 70-80%) — does stronger close predict better outcomes?
-- [ ] Time of day effect — do earlier setups (9:45-10:15) win more than later ones?
-- [ ] Spread at entry — does wider spread correlate with losses?
+- [ ] Breakeven at 1R killed a winner on Apr 8 Trade 3 — need "no BE" tracking
+- [ ] Winning trade (Apr 8 Trade 8) had strongest candle close of the day (92.5%) — does close strength predict winners?
+- [ ] Counter-trend setups (SHORT while Bullish) can work — Apr 8 Trade 3 was counter-trend and hit 1R
+- [ ] Time of day: Trade 8 (the winner) was at 11:24, later in the session
 
 ### Pattern tracking (auto-calculated by Railway API)
 - Win rate by level: `/api/stats?days=30` → `by_level`
@@ -208,6 +315,7 @@ Automated S&P 500 breakout trading system that trades liquidity sweeps at key in
 | 2026-04-01 | v2.5 | Bullish | 2 | 1 | ~+$14 | First live trade day. Stop too tight on trade 1, trade 2 hit 1R+ |
 | 2026-04-02 | v2.6 | Bullish | 8 | 0 | -$56.70 | OneTradePerDay broken, journal reported fake P&L. All 8 trades hit SL |
 | 2026-04-07 | v2.8 | Bullish | 0 | 0 | $0.00 | 7 SHORT setups on PDL all rejected — FixedLots=0.01 vs broker min 1.0. Would have caught 35pt drop |
+| 2026-04-08 | v2.8 | Bullish | 7 | 1 | -$32.00 | First 2R hit (+$21.60). PDH continuation trade won. PML breakdown hit 1R then BE'd out. Entry logic too simplistic — needs redesign |
 
 ---
 

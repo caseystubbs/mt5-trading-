@@ -6,6 +6,101 @@ Live daily summaries: https://mt5.freedomincomeoptions.com/summary
 
 ---
 
+## 2026-04-08 — Day 4
+
+**EA Version:** v2.8 | **Trend:** Bullish (Above 10 EMA) | **Symbol:** SPXUSD
+**OneTradePerDay:** OFF (Casey's choice) | **Grade:** Learning Day
+
+### Session overview
+
+| Metric | Value |
+|--------|-------|
+| Setups found | 8 |
+| Setups rejected | 1 (Error 4756) |
+| Trades taken | 7 |
+| Wins / Losses | 1 / 6 |
+| Win rate | 14% |
+| Total P&L | -$32.00 |
+| Best trade | +$21.60 (2R target!) |
+| Worst trade | -$14.10 |
+
+### Levels
+
+| Level | Price |
+|-------|-------|
+| PDH | 6628.6 |
+| PDL | 6537.9 |
+| PM High | 6812.1 |
+| PM Low | 6781.6 |
+| OR High | 6801.2 |
+| OR Low | 6778.1 |
+
+### Trade-by-trade review
+
+**Trade 1: LONG "PDH" at 09:50 → -$14.10 (SL in ~1 min)**
+- Entry ~6793, Stop 6780, candle close 79.2%
+- Pre-daily-reset trade — used stale levels. No valid setup.
+- Casey's take: No market context. Above PDH is just bias — needed a trigger level.
+
+**Trade 2: LONG "PDH" at 10:05 → -$7.90 (SL in 1 min)**
+- Entry 6783.7, Stop 6776.4 (candle low), Risk $6.80
+- Same problem as Trade 1. Strong candle above PDH but no trigger — no support bounce, no level breakout.
+- Casey's take: Same as Trade 1. Being above PDH doesn't mean buy every candle.
+
+**Trade 3: SHORT PM Low at 10:30 → -$0.30 (breakeven)**
+- Entry 6771.6, Stop 6777.7, Risk $6.10
+- PML Breakdown Short — price broke through PM Low (6781.6) with bearish candle (21% close).
+- Hit 1R at 6765.5. Partial close failed (min lot). Stop moved to breakeven. Price bounced back, hit BE.
+- Casey's take: GOOD SETUP. Would have been a big winner without breakeven. ORL also broke. PDL is 130pts below = room to run. Track "no BE" outcome.
+- **No-BE hypothetical:** Price reached at least 6757 area → would have been ~14+ point winner.
+
+**Trade 4: SHORT PM Low at 10:43 → REJECTED Error 4756**
+- Setup found immediately after Trade 3 closed. Order failed.
+- May be related to Trade 3's partial close attempt leaving position in liminal state.
+
+**Trade 5: LONG "PDH" at 10:50 → -$9.10 (SL in 3 min)**
+- Entry 6766.3, Stop 6757.4, candle close 84.6%
+- Same PDH problem — no trigger level, just strong candle far above PDH.
+
+**Trade 6: LONG "PDH" at 11:05 → -$11.00 (SL in 4 min)**
+- Entry 6769.1, Stop 6758.4, candle close 72.3%
+- Same pattern. Enters, immediately reverses.
+
+**Trade 7: SHORT PM Low at 11:10 → -$11.20 (SL in 14 min)**
+- Entry 6756.8, Stop 6767.8, Risk $10.60
+- PML Breakdown Short — second attempt. Price was choppy at this level. Stopped out.
+
+**Trade 8: LONG "PDH" at 11:24 → +$21.60 (2R TARGET HIT! 80 min hold)**
+- Entry 6767.6, Stop 6756.8, Risk $10.80. Candle close 92.5% — strongest of the day.
+- Hit 1R at 11:49, partial skipped (min lot), stop moved to BE. Hit 2R at 12:45.
+- Casey's take: This was a PDH CONTINUATION trade. The massive PDH breakout (6628→6812) was the campaign. Price consolidated around 6757 (the red box zone). Trade 8 caught the continuation wave out of consolidation. The trade wasn't just "above PDH" — it was the next leg of the PDH breakout campaign.
+
+### Key strategy lessons (from Casey's review)
+
+1. **PDH breakout is a campaign, not a candle.** The initial break launches price, consolidation follows, then the continuation wave. Trade 8 caught the continuation.
+
+2. **Being above PDH = bullish bias, not a trade signal.** Need a specific trigger: bounce off support, breakout of consolidation, or crossover of PMH/ORH/PML/ORL.
+
+3. **PML Breakdown Short was the right trade (Trade 3).** Price broke through PM Low with conviction. The setup was valid. Breakeven killed the winner.
+
+4. **The consolidation zone IS the setup forming.** The red box Casey drew (6740-6757 area) was where smart money consolidated after the big PDH move before launching the next wave.
+
+5. **Distance between levels = reward potential.** PML breakdown with PDL 130pts below = room to run = good short. Need to consider level spacing.
+
+6. **Each setup needs a name.** "LONG PDH" means nothing when price is 150pts above PDH. Need: "PDH Continuation Long", "PML Breakdown Short", etc.
+
+7. **Breakeven at 1R needs evaluation.** Trade 3 hit 1R, moved to BE, got stopped. Without BE it would have been a big winner. Track "no BE" hypothetical going forward.
+
+8. **No filters until Casey understands the entry logic.** Don't add trend filters, distance filters, or any automated filters. Build understanding first.
+
+### Issues
+
+- Error 4756 appeared once (Trade 4) — intermittent, may be related to partial close
+- Partial close still failing (min lot = 1.0, can't split)
+- Entry logic needs complete redesign around the liquidity framework
+
+---
+
 ## 2026-04-07 — Day 3
 
 **EA Version:** v2.8 | **Trend:** Bullish (Above 10 EMA) | **Symbol:** SPXUSD

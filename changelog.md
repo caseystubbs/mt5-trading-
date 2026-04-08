@@ -1,3 +1,17 @@
+## 2026-04-08
+
+### [deploy] First 2R target hit — system works end to end
+
+EA executed 7 trades, hit first ever 2R target for +$21.60. Full pipeline working: EA detects setup → executes trade → manages position → hits target → logs to Railway API → shows on dashboard.
+
+### [feature] Navigation tabs on dashboard
+
+Dashboard and daily summary pages now have tab navigation to switch between views.
+
+### [wip] Trading logic redesign in progress
+
+Major strategy review after today's session. Current "strong candle above level = buy" logic is too simplistic. Building toward liquidity-based framework: PDH/PDL breakout campaigns, consolidation patterns, bounce/breakout triggers at PM and OR levels.
+
 ## 2026-04-07
 
 ### [feature] Auto-generated daily summary page
