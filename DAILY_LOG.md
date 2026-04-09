@@ -6,6 +6,93 @@ Live daily summaries: https://mt5.freedomincomeoptions.com/summary
 
 ---
 
+## 2026-04-09 — Day 5
+
+**EA Version:** v2.9 | **Trend:** Bullish (Above 10 EMA) | **Symbol:** SPXUSD
+**OneTradePerDay:** OFF | **Grade:** B-
+
+### Session overview
+
+| Metric | Value |
+|--------|-------|
+| Setups found | 6 |
+| Setups rejected | 0 |
+| Trades taken | 6 |
+| Wins / Losses | 1 / 5 (+ 2 partial wins at 1R) |
+| Total P&L (MT5) | -$6.50 |
+| Best trade | +$36.50 (#6 PMH Breakout Long, 2R) |
+| Worst trade | -$23.40 (#1 PMH Breakout Long) |
+
+### Levels
+
+| Level | Price |
+|-------|-------|
+| PDH | 6801.2 |
+| PDL | 6745.8 |
+| PM High | 6777.7 |
+| PM Low | 6757.6 |
+| OR High | 6786.6 |
+| OR Low | 6774.0 |
+
+### Trade-by-trade review
+
+**#1 PMH Breakout Long → -$23.40 (SL 11 min)**
+Entry 6787.2, Stop 6775.7 (PMH - $2). Candle 76% close. Legitimate breakout setup at PMH — price was right at the level. But PMH was contested; price reversed immediately.
+
+**#2 PMH Bounce Short → -$8.60 (SL 8 seconds!)**
+Entry 6775.5, Stop 6779.7. Candle 21% close. Entered on the same candle that stopped #1. Whipsaw — two opposing trades in 11 min at the same level = chop, not a clean signal.
+
+**#3 PMH Breakout Long → -$18.40 (SL 15 min)**
+Entry 6784.5, Stop 6775.7. Candle 93% close — very strong. Third trade at PMH in 15 minutes. Price still chopping at this level.
+
+**#4 PMH Bounce Short → +$4.20 partial, -$0.30 BE = +$3.90 net**
+Entry 6774.8, Stop 6779.7, Risk $4.10. Hit 1R — partial close worked (1 lot at 1R for +$4.20). BE set on remaining. Remaining stopped at BE.
+No-BE: best price 6768.9, hypothetical +$5.90. BE cost $6.20.
+
+**#5 ORL Bounce Long → +$3.20 partial, -$0.50 BE = +$2.70 net**
+Entry 6777.9, Stop 6772.0. OR Low bounce — different level from the PMH battle. 81% close. Hit 1R, partial worked. BE stopped remaining.
+No-BE: best price 6783.8, hypothetical +$5.90. BE cost $6.40.
+
+**#6 PMH Breakout Long → +$36.50 (2R TARGET HIT! 33 min)**
+Entry 6788.0, Stop 6775.7, Risk $12.20. 88% close. Partial at 1R (1 lot), BE set. Price ran to 2R at 6812.4. Remaining lot closed at +$36.50. Biggest win ever.
+No-BE: same outcome — 2R hit either way. Hypothetical +$24.50 vs actual +$23.90 on remaining lot.
+This was THE trade. Price tested PMH four times (#1-#4), consolidated at ORL (#5), then made the real breakout.
+
+### What the system did right
+
+- Proximity detection working — all trades at real levels, not 150pts away like Apr 8
+- Three named setup types fired: PMH Breakout Long, PMH Bounce Short, ORL Bounce Long
+- Setup labels visible on chart for easy review
+- Partial close working correctly with 2 lots
+- Level-based stops gave logical invalidation points
+- The 2R winner (#6) was the biggest single trade gain yet
+
+### What needs improvement
+
+- Trading the same level 4 times in chop cost -$50.40 before the +$36.50 win
+- Trade #2 entered 8 seconds after #1 stopped out — needs cooldown between trades at same level
+- P&L on dashboard was wrong (price distance not dollars) — fixed in v2.9.1
+- No daily plan existed — building plan page for tomorrow
+
+### No-BE running scorecard
+
+| Trade | Date | Actual | Without BE | Impact |
+|-------|------|--------|-----------|--------|
+| Apr 8 #3 PML Breakdown Short | Apr 8 | -$0.30 (BE) | Would have been ~+$14 winner | BE cost ~$14 |
+| Apr 9 #4 PMH Bounce Short | Apr 9 | +$3.90 | +$5.90 remaining | BE cost $6.20 |
+| Apr 9 #5 ORL Bounce Long | Apr 9 | +$2.70 | +$5.90 remaining | BE cost $6.40 |
+| Apr 9 #6 PMH Breakout Long | Apr 9 | +$36.50 | +$24.50 | Same outcome |
+| **Total** | | | | **BE has cost ~$26.60 over 4 trades** |
+
+### Lessons learned
+
+1. A contested level (4 tests of PMH) eventually breaks — the question is whether we can survive the chop to catch the breakout.
+2. The winning trade came after consolidation at a different level (ORL) — this confirms the pattern from Apr 8.
+3. Partial close at 2 lots is working perfectly — first time position management is fully functional.
+4. Need a daily plan to avoid blind entries in chop zones.
+
+---
+
 ## 2026-04-08 — Day 4
 
 **EA Version:** v2.8 | **Trend:** Bullish (Above 10 EMA) | **Symbol:** SPXUSD
