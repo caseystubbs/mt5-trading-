@@ -108,6 +108,23 @@ async def init_db():
                 action_taken TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS daily_plans (
+                id SERIAL PRIMARY KEY,
+                trade_date DATE NOT NULL UNIQUE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                bias VARCHAR(20) DEFAULT 'Neutral',
+                bias_reason TEXT DEFAULT '',
+                yesterday_summary TEXT DEFAULT '',
+                premarket_notes TEXT DEFAULT '',
+                key_levels TEXT DEFAULT '',
+                long_setups TEXT DEFAULT '',
+                short_setups TEXT DEFAULT '',
+                invalidation TEXT DEFAULT '',
+                stop_plan TEXT DEFAULT '',
+                notes TEXT DEFAULT ''
+            );
+
             CREATE INDEX IF NOT EXISTS idx_events_date ON trade_events(timestamp_est);
             CREATE INDEX IF NOT EXISTS idx_events_type ON trade_events(event_type);
             CREATE INDEX IF NOT EXISTS idx_summaries_date ON daily_summaries(trade_date);
@@ -182,11 +199,56 @@ class ChangelogEntry(BaseModel):
     reason: str = ""
     api_key: str = ""
 
+class DailyPlan(BaseModel):
+    trade_date: str = ""
+    bias: str = "Neutral"
+    bias_reason: str = ""
+    yesterday_summary: str = ""
+    premarket_notes: str = ""
+    key_levels: str = ""
+    long_setups: str = ""
+    short_setups: str = ""
+    invalidation: str = ""
+    stop_plan: str = ""
+    notes: str = ""
+    api_key: str = ""
+
 # ======================== AUTH ========================
 
 def verify_key(key: str):
     if key != API_KEY:
         raise HTTPException(status_code=403, detail="Invalid API key")
+
+# ======================== PLAN ENDPOINTS ========================
+
+@app.post("/api/plan")
+async def save_plan(plan: DailyPlan):
+    verify_key(plan.api_key)
+    trade_date = datetime.strptime(plan.trade_date, "%Y-%m-%d").date() if plan.trade_date else date.today()
+
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO daily_plans (trade_date, bias, bias_reason, yesterday_summary, premarket_notes,
+                key_levels, long_setups, short_setups, invalidation, stop_plan, notes, updated_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW())
+            ON CONFLICT (trade_date) DO UPDATE SET
+                bias=$2, bias_reason=$3, yesterday_summary=$4, premarket_notes=$5,
+                key_levels=$6, long_setups=$7, short_setups=$8, invalidation=$9,
+                stop_plan=$10, notes=$11, updated_at=NOW()
+        """, trade_date, plan.bias, plan.bias_reason, plan.yesterday_summary,
+            plan.premarket_notes, plan.key_levels, plan.long_setups,
+            plan.short_setups, plan.invalidation, plan.stop_plan, plan.notes)
+
+    return {"status": "ok", "date": str(trade_date)}
+
+@app.get("/api/plan/{plan_date}")
+async def get_plan(plan_date: str):
+    trade_date = datetime.strptime(plan_date, "%Y-%m-%d").date()
+    async with pool.acquire() as conn:
+        plan = await conn.fetchrow("SELECT * FROM daily_plans WHERE trade_date = $1", trade_date)
+    if not plan:
+        raise HTTPException(status_code=404, detail="No plan for " + plan_date)
+    return dict(plan)
 
 # ======================== EVENT ENDPOINTS ========================
 
@@ -711,6 +773,182 @@ async def get_cumulative_log():
     }
 
 
+# ======================== DAILY PLAN PAGE ========================
+
+@app.get("/plan", response_class=HTMLResponse)
+@app.get("/plan/{plan_date}", response_class=HTMLResponse)
+async def plan_page(plan_date: str = None):
+    target_date = datetime.strptime(plan_date, "%Y-%m-%d").date() if plan_date else date.today()
+
+    async with pool.acquire() as conn:
+        plan = await conn.fetchrow("SELECT * FROM daily_plans WHERE trade_date = $1", target_date)
+        # Get yesterday's summary for reference
+        yesterday = target_date - timedelta(days=1)
+        prev_summary = await conn.fetchrow("SELECT * FROM daily_summaries WHERE trade_date = $1", yesterday)
+        prev_events = await conn.fetch("""
+            SELECT * FROM trade_events WHERE timestamp_est::date = $1 OR timestamp_est::date = $2
+            ORDER BY timestamp_est DESC LIMIT 5
+        """, yesterday, yesterday - timedelta(days=1))
+        # Available plan dates
+        available = await conn.fetch("SELECT DISTINCT trade_date FROM daily_plans ORDER BY trade_date DESC LIMIT 14")
+
+    p = dict(plan) if plan else {}
+    ps = dict(prev_summary) if prev_summary else {}
+    avail = [str(r["trade_date"]) for r in available]
+
+    # Nav
+    nav_html = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">'
+    for d in avail:
+        active = "background:#333;color:#fff" if d == str(target_date) else ""
+        nav_html += f'<a href="/plan/{d}" style="padding:4px 12px;border-radius:4px;border:1px solid #333;color:#aaa;text-decoration:none;font-size:12px;{active}">{d}</a>'
+    nav_html += '</div>'
+
+    # Previous day info
+    prev_html = ""
+    if ps:
+        prev_pnl = ps.get("total_pnl", 0) or 0
+        prev_color = "#22c55e" if prev_pnl > 0 else "#ef4444" if prev_pnl < 0 else "#888"
+        prev_html = f"""<div style="background:#111;border-radius:8px;padding:16px;margin-bottom:20px">
+            <div style="font-size:13px;color:#888;margin-bottom:8px">Yesterday ({yesterday})</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;font-size:13px">
+                <div>Trend: {ps.get('daily_trend','?')}</div>
+                <div>Trades: {ps.get('trades_taken',0)}</div>
+                <div>Win: {ps.get('trades_won',0)} / Loss: {ps.get('trades_lost',0)}</div>
+                <div style="color:{prev_color}">P&L: ${prev_pnl:.2f}</div>
+            </div>
+        </div>"""
+
+    bias_val = p.get("bias", "Neutral")
+    bias_options = ""
+    for b in ["Bullish", "Bearish", "Neutral", "Range"]:
+        sel = "selected" if b == bias_val else ""
+        bias_options += f'<option value="{b}" {sel}>{b}</option>'
+
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Daily plan — {target_date}</title>
+<style>
+body{{font-family:-apple-system,system-ui,sans-serif;margin:0;padding:20px;background:#0a0a0a;color:#e0e0e0;max-width:900px;margin:0 auto}}
+h1{{font-size:22px;font-weight:500;margin:0 0 4px}}
+h2{{font-size:16px;font-weight:500;margin:24px 0 8px;color:#aaa;border-bottom:1px solid #222;padding-bottom:6px}}
+.subtitle{{font-size:14px;color:#888;margin-bottom:16px}}
+label{{display:block;font-size:13px;color:#888;margin-bottom:4px}}
+input[type=text],textarea,select{{width:100%;padding:10px 12px;border:1px solid #333;border-radius:6px;background:#111;color:#e0e0e0;font-size:14px;font-family:inherit;box-sizing:border-box;margin-bottom:16px;resize:vertical}}
+textarea{{min-height:80px}}
+select{{height:42px}}
+.row2{{display:grid;grid-template-columns:1fr 1fr;gap:16px}}
+.nav-tabs{{display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid #333}}
+.nav-tabs a{{padding:10px 20px;color:#888;text-decoration:none;font-size:14px;border-bottom:2px solid transparent}}
+.nav-tabs a:hover{{color:#fff;background:#111}}
+.nav-tabs a.active{{color:#fff;border-bottom:2px solid #60a5fa}}
+button{{padding:10px 24px;background:#1d4ed8;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500}}
+button:hover{{background:#2563eb}}
+.saved{{color:#22c55e;font-size:13px;margin-left:12px;display:none}}
+a{{color:#60a5fa}}
+</style></head><body>
+
+<div class="nav-tabs">
+    <a href="/">Dashboard</a>
+    <a href="/summary">Daily summary</a>
+    <a href="/plan" class="active">Daily plan</a>
+</div>
+
+<h1>Daily trading plan</h1>
+<div class="subtitle">{target_date} | Fill out before market open (9:30 EST)</div>
+
+{nav_html}
+{prev_html}
+
+<h2>Market bias</h2>
+<div class="row2">
+    <div>
+        <label>Bias for today</label>
+        <select id="bias">{bias_options}</select>
+    </div>
+    <div>
+        <label>Why? (e.g. "Above PDH, gap up, strong premarket")</label>
+        <input type="text" id="bias_reason" value="{p.get('bias_reason','')}" placeholder="Price above PDH at 6628, bullish bias...">
+    </div>
+</div>
+
+<h2>Yesterday's price action</h2>
+<textarea id="yesterday_summary" placeholder="What happened yesterday? Key moves, levels that held/broke, end of day behavior...">{p.get('yesterday_summary','')}</textarea>
+
+<h2>Premarket &amp; overnight</h2>
+<textarea id="premarket_notes" placeholder="Gap up/down? Where is PM High/Low forming? Any news catalysts?">{p.get('premarket_notes','')}</textarea>
+
+<h2>Key levels for today</h2>
+<textarea id="key_levels" placeholder="PDH: 6801.2&#10;PDL: 6745.8&#10;PM High: 6777.7&#10;PM Low: 6757.6&#10;OR High: (after 9:45)&#10;OR Low: (after 9:45)&#10;&#10;Key support: ___&#10;Key resistance: ___">{p.get('key_levels','')}</textarea>
+
+<h2>Setups I'm watching</h2>
+<div class="row2">
+    <div>
+        <label>Long setups</label>
+        <textarea id="long_setups" placeholder="e.g. PMH Breakout Long if price holds above ORL&#10;ORL Bounce Long if price pulls back to OR Low">{p.get('long_setups','')}</textarea>
+    </div>
+    <div>
+        <label>Short setups</label>
+        <textarea id="short_setups" placeholder="e.g. PML Breakdown Short if PM Low breaks&#10;PDL Breakdown Short if bearish — switch bias">{p.get('short_setups','')}</textarea>
+    </div>
+</div>
+
+<h2>Plan invalidation</h2>
+<textarea id="invalidation" placeholder="What would change the plan? e.g. 'If PDL breaks, switch from bullish to bearish. Look for PDL bounce short setups.'">{p.get('invalidation','')}</textarea>
+
+<h2>Stop loss plan</h2>
+<textarea id="stop_plan" placeholder="Where are stops going today? e.g. 'Longs: stop below PML (6757.6 - $3 = 6754.6). Shorts: stop above PMH (6777.7 + $3 = 6780.7)'">{p.get('stop_plan','')}</textarea>
+
+<h2>Additional notes</h2>
+<textarea id="notes" placeholder="Anything else — news events, personal reminders, risk management notes...">{p.get('notes','')}</textarea>
+
+<div style="margin-top:20px;display:flex;align-items:center">
+    <button onclick="savePlan()">Save plan</button>
+    <span class="saved" id="saved-msg">Plan saved!</span>
+</div>
+
+<script>
+async function savePlan() {{
+    const body = {{
+        trade_date: "{target_date}",
+        bias: document.getElementById("bias").value,
+        bias_reason: document.getElementById("bias_reason").value,
+        yesterday_summary: document.getElementById("yesterday_summary").value,
+        premarket_notes: document.getElementById("premarket_notes").value,
+        key_levels: document.getElementById("key_levels").value,
+        long_setups: document.getElementById("long_setups").value,
+        short_setups: document.getElementById("short_setups").value,
+        invalidation: document.getElementById("invalidation").value,
+        stop_plan: document.getElementById("stop_plan").value,
+        notes: document.getElementById("notes").value,
+        api_key: prompt("Enter API key:")
+    }};
+    try {{
+        const res = await fetch("/api/plan", {{
+            method: "POST",
+            headers: {{"Content-Type": "application/json"}},
+            body: JSON.stringify(body)
+        }});
+        const data = await res.json();
+        if(data.status === "ok") {{
+            const msg = document.getElementById("saved-msg");
+            msg.style.display = "inline";
+            setTimeout(() => msg.style.display = "none", 3000);
+        }} else {{
+            alert("Error: " + JSON.stringify(data));
+        }}
+    }} catch(e) {{
+        alert("Save failed: " + e.message);
+    }}
+}}
+</script>
+
+<div style="margin-top:40px;padding-top:20px;border-top:1px solid #222;font-size:12px;color:#555">
+    <a href="/">Dashboard</a> | <a href="/summary">Today's summary</a> | <a href="/api/plan/{target_date}">Raw JSON</a>
+</div>
+
+</body></html>"""
+
+
 # ======================== DAILY SUMMARY PAGE ========================
 
 @app.get("/summary", response_class=HTMLResponse)
@@ -997,6 +1235,7 @@ a{{color:#60a5fa}}
 <div class="nav-tabs">
     <a href="/">Dashboard</a>
     <a href="/summary" class="active">Daily summary</a>
+    <a href="/plan">Daily plan</a>
 </div>
 
 <h1>Daily trading summary</h1>
@@ -1155,6 +1394,7 @@ td{{padding:8px;border-bottom:1px solid #1a1a1a}}
 <div class="nav-tabs">
     <a href="/" class="active">Dashboard</a>
     <a href="/summary">Daily summary</a>
+    <a href="/plan">Daily plan</a>
 </div>
 
 <h1>EST Liquidity Breakout EA — Trade Journal</h1>
