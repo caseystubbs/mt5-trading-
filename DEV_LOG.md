@@ -20,6 +20,49 @@ Automated S&P 500 breakout trading system that trades liquidity sweeps at key in
 
 ## Changelog
 
+### v2.9.1 — 2026-04-09
+**Type:** Bug fix + features
+- **P&L fix (critical):** Added `PriceToDollar()` helper — converts price distance to actual dollar P&L using tick size, tick value, and lot size. Dashboard was showing -$2.10 when real MT5 P&L was -$6.50 (2 lots). Fixed in all close paths: TARGET_2R, FORCE_CLOSE, DetectBrokerSideClose, and NO_BE_HYPOTHETICAL.
+- **Added `g_originalLots` global** — stores lot size at trade open for accurate P&L calculation even after partial close
+- **Premarket range shading** — dark teal rectangle on chart from 4:00-9:29 EST between PM High and PM Low
+- **Opening range shading** — dark yellow rectangle from 9:30 for first 15 min between OR High and OR Low
+- **Added `DrawSessionShade()` and `GetESTSessionTime()` helper functions**
+- **Daily plan page** — new `/plan` route on Railway dashboard with form for: bias, bias reason, yesterday summary, premarket notes, key levels, long/short setups, invalidation, stop plan, notes
+- **`daily_plans` PostgreSQL table** — stores plans by date with `POST /api/plan` and `GET /api/plan/{date}` endpoints
+- **Plan tab** added to all dashboard navigation (Dashboard, Summary, Plan)
+- **Reason:** Dashboard P&L was wrong with 2-lot positions. Plan page needed for Casey's pre-market preparation workflow.
+
+### v2.9.1 session — 2026-04-09
+**Type:** Trading day + strategy development
+- 6 trades taken on 3 different setup types (OneTradePerDay OFF)
+- 1 win (+$36.50 at 2R), 2 partial wins at 1R (+$4.20, +$3.20), 3 SL losses
+- Real MT5 P&L: -$6.50 (Balance: -$8.90 with swap/commission)
+- Biggest single trade win ever: #6 PMH Breakout Long +$36.50
+- Partial close working correctly with 2 lots (1 lot at 1R, 1 lot rides to 2R)
+- Proximity detection working — all trades at real levels (PMH 6777.7 or ORL 6774.0)
+- Setup names visible on chart: "#1 PMH Breakout Long", "#2 PMH Bounce Short", etc.
+- Level-based stops working (stop at PMH - $2 = 6775.7)
+
+**No-BE tracking results (3 trades):**
+- Trade #4 PMH Bounce Short: Actual +$3.90 (partial + BE) → Without BE: +$5.90 on remaining. BE cost $6.20
+- Trade #5 ORL Bounce Long: Actual +$2.70 (partial + BE) → Without BE: +$5.90 on remaining. BE cost $6.40
+- Trade #6 PMH Breakout Long: Actual +$36.50 (2R) → Without BE: +$24.50 (same 2R). Same outcome.
+- Running total: BE has cost ~$12.60 across the two trades that hit BE then reversed
+
+**Key observations:**
+- PMH was contested for 90 minutes (Trades 1-4) before the real breakout (Trade 6)
+- Trading the same level repeatedly in chop is expensive: -$50.40 in losses before the +$36.50 win
+- The winning breakout came AFTER consolidation at ORL — matches Casey's "consolidation then continuation" framework
+- Trade #2 (PMH Bounce Short) hit SL in 8 seconds — entered on same candle that stopped out Trade #1. Whipsaw.
+- Three distinct setup types fired today: PMH Breakout Long, PMH Bounce Short, ORL Bounce Long
+
+**Casey's strategy direction:**
+- Wants a daily plan workflow: analyze yesterday, assess premarket, identify key levels, plan specific setups, define invalidation
+- Stops should be placed below key levels, not based on R:R math
+- The level IS the invalidation — if price reclaims the level, you're wrong
+- Ignore BE discussion for now — gathering more data
+- Premarket and OR shading on chart helps visualize session boundaries
+
 ### v2.8 session — 2026-04-08
 **Type:** Strategy review (critical learning day)
 - First day with trades executing end to end via webhook pipeline
@@ -316,6 +359,7 @@ Levels serve two distinct purposes:
 | 2026-04-02 | v2.6 | Bullish | 8 | 0 | -$56.70 | OneTradePerDay broken, journal reported fake P&L. All 8 trades hit SL |
 | 2026-04-07 | v2.8 | Bullish | 0 | 0 | $0.00 | 7 SHORT setups on PDL all rejected — FixedLots=0.01 vs broker min 1.0. Would have caught 35pt drop |
 | 2026-04-08 | v2.8 | Bullish | 7 | 1 | -$32.00 | First 2R hit (+$21.60). PDH continuation trade won. PML breakdown hit 1R then BE'd out. Entry logic too simplistic — needs redesign |
+| 2026-04-09 | v2.9 | Bullish | 6 | 1 | -$6.50 | Biggest win +$36.50 (PMH Breakout Long 2R). Proximity detection working. 3 setup types fired. Partial close working. PMH contested 90min before real breakout. |
 
 ---
 
