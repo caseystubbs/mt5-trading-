@@ -1,3 +1,25 @@
+## 2026-04-09
+
+### [feature] Daily plan page for pre-market preparation
+
+New /plan tab on the dashboard. Fill out market bias, key levels, setups to watch, invalidation conditions, and stop plan before market open each morning. Saves to database with date navigation.
+
+### [feature] Premarket and opening range shading on chart
+
+Premarket range (4:00-9:29 EST) shaded in dark teal. Opening range (first 15 min) shaded in dark yellow. Makes session boundaries visually clear on the M5 chart.
+
+### [fix] P&L now shows real dollar amounts
+
+Dashboard was showing price distance instead of actual dollar P&L. Fixed — EA now calculates lots x tick value for accurate reporting. With 2 lots, a 10-point move = $20, not $10.
+
+### [deploy] Biggest single trade win: +$36.50
+
+Trade #6 PMH Breakout Long hit 2R target after price tested PM High four times and consolidated at OR Low. Partial close worked correctly — 1 lot at 1R, remaining lot rode to 2R.
+
+### [wip] No-BE tracking producing early results
+
+Three trades tracked so far. Breakeven cost approximately $12.60 across two trades that would have been winners without it. Gathering more data before making changes.
+
 ## 2026-04-08
 
 ### [deploy] First 2R target hit — system works end to end
