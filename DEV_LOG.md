@@ -20,6 +20,36 @@ Automated S&P 500 breakout trading system that trades liquidity sweeps at key in
 
 ## Changelog
 
+### v2.9.1 session — 2026-04-10
+**Type:** Strategy review (worst day — critical lessons)
+- 4 trades taken, 0 wins, -$66.80 (real MT5 P&L: -$68.40)
+- ALL 4 trades were ORL Bounce Long at the same level (6832.3) with the same stop (6830.3)
+- EA has no memory — keeps taking the same losing trade
+- Casey's morning plan was excellent but the EA completely ignored it
+- Dashboard showed wrong levels (yesterday's data) due to multiple EA restarts sending stale DAILY_OPEN events
+
+**Casey's plan vs EA's actions:**
+- Plan identified 6848 (PMH/ORH/PDH convergence) as the decision level
+- Plan identified 6812 (PML) as key support
+- Plan said: "Long above 6848 on breakout. Short on 6848 rejection. Short below 6812."
+- EA did: 4x ORL Bounce Long at 6832 — a level NOT IN the plan
+- The only real trade per Casey: short bounce off ORH/PMH/PDH resistance zone at the top
+- Price ranged 14 points all day — classic chop between major levels
+
+**Strategy decisions made:**
+1. **Phase 1: Better levels** — EA needs to identify quality levels, not just any level. Level hierarchy: PDH/PDL > PML/PMH > ORL/ORH. Stacked levels (multiple levels near each other) rank highest. Add historical levels from past 5-20 days.
+2. **Phase 2: Better plans** — Casey and Claude build daily plan together each morning. Eventually an AI agent auto-generates the plan.
+3. **Phase 3: Better candles** — Current close % filter is too simple. Need candle range size relative to recent candles (momentum), not just close position.
+4. **Phase 4: EA follows the plan** — Plan sets guardrails (focus levels, bias, max trades, chop flag). EA only trades within those guardrails.
+5. **One good trade per session** is the goal — not 4-6 shots hoping one works.
+6. **Historical daily levels** — scan back 5-20 days for swing highs/lows near current price. Previous PDH/PDL that price keeps reacting to are still live levels.
+
+**Key insight from Casey:**
+- "ORL was not a real level. PML was the real support."
+- "The only real trade was the short from ORH — 3 levels stacked (PMH + ORH + PDH) with a strong rejection candle."
+- "There is probably one good trade per session."
+- "We need to get better at finding levels and better at seeing what a candle with momentum looks like."
+
 ### v2.9.1 — 2026-04-09
 **Type:** Bug fix + features
 - **P&L fix (critical):** Added `PriceToDollar()` helper — converts price distance to actual dollar P&L using tick size, tick value, and lot size. Dashboard was showing -$2.10 when real MT5 P&L was -$6.50 (2 lots). Fixed in all close paths: TARGET_2R, FORCE_CLOSE, DetectBrokerSideClose, and NO_BE_HYPOTHETICAL.
@@ -267,6 +297,32 @@ Levels serve two distinct purposes:
 
 ### Key principles learned
 
+**From Apr 10 — level quality matters more than candle quality:**
+- ORL is a weak level (just where the first 15 min printed). PML is real support. PDH/PDL are the anchors.
+- Level hierarchy: PDH/PDL > PML/PMH > ORL/ORH. EA must prioritize major levels.
+- Stacked levels (3 levels near each other like PMH + ORH + PDH) are much stronger than single levels.
+- A 98% close candle at a weak level still loses. Level quality > candle quality.
+
+**From Apr 10 — the plan was smarter than the EA:**
+- Casey's plan identified 6848 as the decision level and 6812 as support. The EA traded ORL (6832) — not in the plan.
+- The only real trade was a short off the 6848 zone (3 stacked levels). EA was long at ORL and couldn't see it.
+- The EA needs to be plan-aware — either read the plan from the API or have built-in level scoring that reaches the same conclusions.
+
+**From Apr 10 — chop detection:**
+- Overnight was in a range. PM range was tight. Price sat between major levels all day.
+- 14-point range = chop day. The EA should recognize this and either wait for a breakout or skip the day.
+- "There is probably one good trade per session" — the goal is finding THE trade, not taking every signal.
+
+**From Apr 10 — historical levels:**
+- EA only looks at yesterday's PDH/PDL. But levels from 3, 5, 10 days ago can still be live if price keeps reacting to them.
+- Need to scan back further and identify swing highs/lows that are near current price.
+- Previous PDH/PDLs that haven't been broken are still key charting zones.
+
+**From Apr 9 — contested levels eventually break:**
+- PMH was tested 4 times (Trades 1-4) before the real breakout (Trade 6). 
+- Trade 6 came after consolidation at ORL — confirming the "consolidation then continuation" pattern from Apr 8.
+- But Apr 10 showed the opposite — ORL was tested 4 times and never held. Not every contested level breaks through.
+
 **From Apr 8 — PDH continuation:**
 - A PDH breakout is a CAMPAIGN, not a single candle. The initial break launches price, then it consolidates, then the continuation wave comes.
 - Trade 8 won because it caught the continuation after consolidation — price based around 6757, then pushed to 6789.
@@ -274,12 +330,10 @@ Levels serve two distinct purposes:
 
 **From Apr 8 — entry context:**
 - Just being above PDH doesn't mean buy every strong candle. Price at 6780 with PDH at 6628 = bullish bias, but you need a TRIGGER (bounce off support, breakout of consolidation, crossover of PMH/ORH).
-- The EA currently has no concept of "is price actually near this level?" — it treats every candle above PDH as a breakout.
 
 **From Apr 8 — PML breakdown:**
 - Trade 3 (SHORT PML) was a correct setup — price broke through PM Low with conviction.
 - It hit 1R, moved to BE, then got stopped at BE for -$0.30. Without BE it would have been a big winner.
-- Need to track "no BE" outcomes to evaluate whether breakeven helps or hurts.
 
 **From Apr 8 — level relationships:**
 - When PML breaks and PDL is 130 points below, there's room to run → good short opportunity.
@@ -288,24 +342,23 @@ Levels serve two distinct purposes:
 **From Apr 8 — stops:**
 - Stop placement should be based on the level itself (above/below the trigger level) not the candle high/low.
 - If you short a PML breakdown, the trade is wrong when price reclaims PML → stop goes above PML.
-- Candle-based stops are arbitrary. Level-based stops have market logic.
 
 **From Apr 1 — stop distance:**
 - Trade 1 had a 9.8pt stop, got clipped. Trade 2 had 21.2pt stop, worked. Wider stops survive better.
 
 **From Apr 2 — OneTradePerDay:**
 - Casey intentionally turns this ON or OFF depending on the day. The setting works correctly.
-- When OFF, the EA can take multiple trades — this is by design.
 
 ### Things we don't know yet (track and learn)
 
-- [ ] Does breakeven at 1R help or hurt overall? (Track "no BE" hypothetical)
+- [ ] Does breakeven at 1R help or hurt overall? (Early data: BE cost ~$26.60 across 4 tracked trades)
 - [ ] Which setup types have the highest win rate?
-- [ ] Does candle close strength (90%+ vs 70%) predict winners?
-- [ ] Do earlier setups (9:45-10:15) win more than later ones?
-- [ ] How often does a PDH breakout campaign have a profitable continuation trade?
-- [ ] What's the optimal stop buffer beyond a level? ($2? $3? $5?)
-- [ ] Does the distance between trigger level and next level predict trade outcome?
+- [ ] Does candle range size (momentum) predict winners better than close %?
+- [ ] How to distinguish "contested level about to break" (Apr 9) from "weak level, stop trading it" (Apr 10)?
+- [ ] What's the optimal number of historical days to scan for levels? (5? 10? 20?)
+- [ ] Does level stacking (multiple levels near each other) predict higher win rate?
+- [ ] How tight is "too tight" for a PM range? (chop detection threshold)
+- [ ] One good trade per session — what does the ideal trade look like across all our data?
 
 ---
 
@@ -360,6 +413,7 @@ Levels serve two distinct purposes:
 | 2026-04-07 | v2.8 | Bullish | 0 | 0 | $0.00 | 7 SHORT setups on PDL all rejected — FixedLots=0.01 vs broker min 1.0. Would have caught 35pt drop |
 | 2026-04-08 | v2.8 | Bullish | 7 | 1 | -$32.00 | First 2R hit (+$21.60). PDH continuation trade won. PML breakdown hit 1R then BE'd out. Entry logic too simplistic — needs redesign |
 | 2026-04-09 | v2.9 | Bullish | 6 | 1 | -$6.50 | Biggest win +$36.50 (PMH Breakout Long 2R). Proximity detection working. 3 setup types fired. Partial close working. PMH contested 90min before real breakout. |
+| 2026-04-10 | v2.9.1 | Bullish | 4 | 0 | -$68.40 | Worst day. 4x ORL Bounce Long at same weak level, all SL. Casey's plan identified 6848 as key level — EA ignored it. Strategy redesign started. |
 
 ---
 

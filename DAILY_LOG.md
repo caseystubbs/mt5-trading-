@@ -6,6 +6,87 @@ Live daily summaries: https://mt5.freedomincomeoptions.com/summary
 
 ---
 
+## 2026-04-10 — Day 6
+
+**EA Version:** v2.9.1 | **Trend:** Bullish (Above 10 EMA) | **Symbol:** SPXUSD
+**OneTradePerDay:** OFF | **Grade:** F (worst day)
+
+### Session overview
+
+| Metric | Value |
+|--------|-------|
+| Setups found | 4 |
+| Setups rejected | 0 |
+| Trades taken | 4 |
+| Wins / Losses | 0 / 4 |
+| Total P&L (MT5) | -$68.40 |
+| Best trade | none |
+| Worst trade | -$25.60 (#4 ORL Bounce Long) |
+
+### Levels (actual from chart, dashboard had stale data)
+
+| Level | Price |
+|-------|-------|
+| PDH | 6841.1 |
+| PDL | 6767.7 |
+| PM High | 6850.3 |
+| PM Low | 6815.9 |
+| OR High | 6846.7 |
+| OR Low | 6832.3 |
+
+### Casey's pre-market plan (filled out at ~7:45 AM)
+
+- **Bias:** Bullish. "6848 is bullish we trade long above that."
+- **Yesterday:** "Price is above the PDH for 5 days in a row and there is key resistance around 6848"
+- **Overnight:** "Was in a range"
+- **Key levels:** "6848 if price breaks above look for bullish trade. If rejection and strong move to downside, look for selling candle to short off that range."
+- **Long setups:** "6848 breakout, or breakout and retest with strong bullish bounce"
+- **Short setups:** "Rejection of 6848 with strong selling candle. If price breaks below 6812, short or retest of 6812 breakdown."
+- **Invalidation:** "If PDH is moved above we are looking for longs. If price fails or breaks below PDL then we short around 6812."
+- **Stops:** "Above 6812 for shorts. Below 6848 for longs, maybe around 6845."
+- **Notes:** "I don't have PM or OR prices yet but because it is in a range we will be focusing on PDH and PDL."
+
+### What the EA actually did (ignored the plan completely)
+
+| # | Setup | Entry | Stop | P&L | Duration |
+|---|-------|-------|------|-----|----------|
+| 1 | ORL Bounce Long | 6838.7 | 6830.3 | -$16.80 | 5 min |
+| 2 | ORL Bounce Long | 6837.5 | 6830.3 | -$14.40 | 5 min |
+| 3 | ORL Bounce Long | 6835.1 | 6830.3 | -$10.00 | 2 min |
+| 4 | ORL Bounce Long | 6842.1 | 6830.3 | -$25.60 | 85 min |
+
+All 4 trades: same setup, same level, same stop. The EA has no memory — keeps trying the same failing trade.
+
+### The trade that should have been taken (per Casey)
+
+Short bounce off ORH/PMH/PDH resistance zone at ~6848. Three levels stacked there — strongest resistance zone on the chart. A strong rejection candle there with a short entry would have been the one good trade of the day.
+
+### Why the trades failed
+
+1. **ORL is a weak level** — just the first 15 min of trading. PML (6815.9) was the real support 16 points below.
+2. **Range day** — only 14 points of movement. No trend to ride. EA was trying to bounce-trade inside chop.
+3. **Same stop hit 4 times** — 6830.3 (ORL - $2). Price kept wicking below. Either the level isn't holding or the buffer is too tight. Doesn't matter — ORL wasn't the right level to trade.
+4. **No level hierarchy** — EA treated ORL the same as PDH/PDL/PMH. It shouldn't.
+
+### Strategy decisions made today
+
+1. **Level hierarchy needed:** PDH/PDL > PML/PMH > ORL/ORH. EA must prioritize major levels.
+2. **Level stacking:** When PMH + ORH + PDH converge at 6848, that's a mega-level. Single ORL is weak.
+3. **Historical levels:** Scan back 5-20 days for swing highs/lows near current price. Previous PDH/PDLs are still live levels.
+4. **Daily plan drives trading:** The plan should set the guardrails. EA should only trade the levels in the plan.
+5. **One good trade per session:** Stop taking 4-6 shots. Wait for THE setup where plan + level + candle all align.
+6. **AI agent will generate the plan:** Build toward automated plan generation using Casey's framework.
+7. **Chop detection:** Tight PM range + price between major levels = flag as range day, require breakout before trading.
+
+### Lessons learned
+
+1. Casey's manual plan was better than the EA's automated trading. The plan is the path forward.
+2. Level quality matters more than candle quality. A 98% close at a weak level still loses.
+3. The one good trade today was the short from 6848 — the EA was long at a weak level and couldn't see it.
+4. "There is probably one good trade per session" — this changes the entire approach.
+
+---
+
 ## 2026-04-09 — Day 5
 
 **EA Version:** v2.9 | **Trend:** Bullish (Above 10 EMA) | **Symbol:** SPXUSD

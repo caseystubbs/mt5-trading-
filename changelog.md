@@ -1,3 +1,17 @@
+## 2026-04-10
+
+### [wip] Strategy redesign — daily plan driven trading
+
+Major strategy shift: EA should follow a daily plan instead of trading every level it sees. Casey's manual plan identified 6848 as the decision level and 6812 as key support. EA ignored both and took 4 ORL bounce longs that all lost. Building toward AI-generated plans and plan-aware EA.
+
+### [wip] Historical levels identification planned
+
+EA currently only looks at yesterday's PDH/PDL. Need to scan back 5-20 days for significant swing highs/lows near current price. These are levels big money trades off of.
+
+### [fix] Identified level hierarchy problem
+
+Not all levels are equal. PDH/PDL and PML/PMH are the heavy levels. OR levels are minor. EA treated them all the same — resulted in 4 trades at a weak ORL level while major levels were ignored.
+
 ## 2026-04-09
 
 ### [feature] Daily plan page for pre-market preparation
