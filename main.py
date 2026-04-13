@@ -792,9 +792,46 @@ async def plan_page(plan_date: str = None):
         # Available plan dates
         available = await conn.fetch("SELECT DISTINCT trade_date FROM daily_plans ORDER BY trade_date DESC LIMIT 14")
 
+        # Get today's levels from DAILY_OPEN event (most recent one)
+        daily_open = await conn.fetchrow("""
+            SELECT notes FROM trade_events
+            WHERE event_type = 'DAILY_OPEN'
+            AND (timestamp_est::date = $1 OR timestamp_est::date = $2)
+            ORDER BY timestamp_est DESC LIMIT 1
+        """, target_date, target_date - timedelta(days=1))
+
     p = dict(plan) if plan else {}
     ps = dict(prev_summary) if prev_summary else {}
     avail = [str(r["trade_date"]) for r in available]
+
+    # Parse levels from DAILY_OPEN notes
+    auto_levels = ""
+    if daily_open and daily_open.get("notes"):
+        notes = daily_open["notes"]
+        level_lines = []
+        for part in notes.split(" "):
+            if "=" in part:
+                k, v = part.split("=", 1)
+                if v != "N/A":
+                    label = k
+                    if k == "PDH": label = "PDH"
+                    elif k == "PDL": label = "PDL"
+                    elif k == "PMH": label = "PM High"
+                    elif k == "PML": label = "PM Low"
+                    elif k == "ORH": label = "OR High"
+                    elif k == "ORL": label = "OR Low"
+                    level_lines.append(f"{label}: {v}")
+                else:
+                    label = k
+                    if k == "PMH": label = "PM High"
+                    elif k == "PML": label = "PM Low"
+                    elif k == "ORH": label = "OR High"
+                    elif k == "ORL": label = "OR Low"
+                    level_lines.append(f"{label}: (not yet available)")
+        auto_levels = "\n".join(level_lines)
+
+    # Use auto levels if plan doesn't already have levels saved
+    key_levels_value = p.get('key_levels', '') or auto_levels
 
     # Nav
     nav_html = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">'
@@ -877,8 +914,9 @@ a{{color:#60a5fa}}
 <h2>Premarket &amp; overnight</h2>
 <textarea id="premarket_notes" placeholder="Gap up/down? Where is PM High/Low forming? Any news catalysts?">{p.get('premarket_notes','')}</textarea>
 
-<h2>Key levels for today</h2>
-<textarea id="key_levels" placeholder="PDH: 6801.2&#10;PDL: 6745.8&#10;PM High: 6777.7&#10;PM Low: 6757.6&#10;OR High: (after 9:45)&#10;OR Low: (after 9:45)&#10;&#10;Key support: ___&#10;Key resistance: ___">{p.get('key_levels','')}</textarea>
+<h2>Key levels for today <span style="font-size:12px;color:#888;font-weight:400">(auto-loaded from EA)</span></h2>
+<textarea id="key_levels" placeholder="Levels will auto-populate when EA sends DAILY_OPEN event..." style="min-height:120px">{key_levels_value}</textarea>
+<button onclick="refreshLevels()" style="background:#333;padding:6px 16px;font-size:12px;margin-bottom:16px">Refresh levels from EA</button>
 
 <h2>Setups I'm watching</h2>
 <div class="row2">
@@ -938,6 +976,39 @@ async function savePlan() {{
         }}
     }} catch(e) {{
         alert("Save failed: " + e.message);
+    }}
+}}
+
+async function refreshLevels() {{
+    try {{
+        const res = await fetch("/api/today");
+        const data = await res.json();
+        if(!data.events) return;
+
+        let levels = [];
+        for(const evt of data.events) {{
+            if(evt.event_type === "DAILY_OPEN" && evt.notes) {{
+                const parts = evt.notes.split(" ");
+                for(const part of parts) {{
+                    if(part.includes("=")) {{
+                        const [k, v] = part.split("=");
+                        const labels = {{PDH:"PDH",PDL:"PDL",PMH:"PM High",PML:"PM Low",ORH:"OR High",ORL:"OR Low"}};
+                        const label = labels[k] || k;
+                        if(v === "N/A") levels.push(label + ": (not yet available)");
+                        else levels.push(label + ": " + v);
+                    }}
+                }}
+            }}
+        }}
+
+        if(levels.length > 0) {{
+            const el = document.getElementById("key_levels");
+            el.value = levels.join("\\n");
+        }} else {{
+            alert("No levels found yet. Make sure the EA is running and has sent a DAILY_OPEN event.");
+        }}
+    }} catch(e) {{
+        alert("Failed to fetch levels: " + e.message);
     }}
 }}
 </script>
