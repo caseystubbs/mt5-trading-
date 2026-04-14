@@ -1,3 +1,33 @@
+## 2026-04-14
+
+### [deploy] EA v3.1.1 — flexible entry logic, live PM levels, wider historical scan
+
+Entry logic rewritten: removed strong close filter, simplified to zone proximity + directional candle. PM levels now update live from 4:00 AM (not waiting until 9:29). Historical scan expanded to 20 days / $100 proximity. Debug prints added for historical level diagnosis. Password removed from plan page save.
+
+### [fix] Historical levels now showing on chart
+
+Fixed proximity filter ($50 was too tight, levels at $60+ distance were filtered out). Increased to $100. Debug prints confirmed levels are being found. Legend now shows D-2 H, D-3 H, D-3 L, D-4 H with prices.
+
+### [wip] EA still not triggering entries — third consecutive day
+
+Casey's plan identified 6918 as the key level. Casey manually traded exactly at 6918 for +$20.40 on MidasFX. EA had the same level programmed but took zero trades. Entry logic or plan level loading issue — needs debug prints on candle evaluation to diagnose.
+
+### [docs] Casey's trade management style documented
+
+From journal analysis: stop at nearest key level (not fixed buffer), target at next key level, trail stop in stages (near BE → plan level → let TP hit), 3:1 R:R on main trade. Level-to-level trading with active management.
+
+### [feature] Live status line on chart (top-left)
+
+Single line showing what EA is doing at all times: waiting for session, scanning with nearest plan levels and distance, managing trade with live P&L/stop/target, or session over. Updates every tick. Shows "NO PLAN LEVELS SET" if inputs are empty.
+
+### [fix] Entry window starts at 9:30 EST (was 9:45)
+
+Casey's main trade today was at 9:36 AM — PMH broke before OR was complete. The 15-minute wait for OR to form was preventing trades. OR range still shaded on chart for reference but EA can now trade from market open.
+
+### [docs] Historical levels D-3 H and D-2 H respected perfectly
+
+Price bounced off both D-3 H and D-2 H during today's session — validates that historical daily levels are real support/resistance. These should be included in daily plans as bounce/rejection zones.
+
 ## 2026-04-13
 
 ### [deploy] EA v3.1 — clean build, plan-driven only

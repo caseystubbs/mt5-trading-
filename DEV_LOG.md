@@ -20,6 +20,62 @@ Automated S&P 500 breakout trading system that trades liquidity sweeps at key in
 
 ## Changelog
 
+### v3.1.1 — 2026-04-14
+**Type:** Entry logic fix + features
+- **Entry logic rewritten:** Removed IsStrongBullishClose/IsStrongBearishClose filters from CheckLong/ShortSetup. CheckPlanLevel simplified — breakout long now just requires candle close above level + candle within proximity + bullish candle (close > open). Bounce long requires candle low within proximity of level + bullish + close at or above level. Same mirrored for shorts.
+- **PM levels live from 4:00 AM:** CalculatePremarketLevels now calculates running high/low from pmStart to NOW during the PM session, instead of waiting until 9:29. Updates every tick.
+- **Historical scan expanded:** HistoricalDaysToScan default 20 (was 10), HistLevelProximity default $100 (was $50).
+- **Debug prints in CalculateHistoricalLevels:** Shows each day scanned with high/low and distance from current bid. Prints total days found and unique levels.
+- **Plan page password removed:** Save button no longer prompts for API key.
+- **Broker price offset identified:** MidasFX prices are ~$5 lower than Coinexx for SPXUSD. Casey's 6913.6 entry = ~6918 on Coinexx.
+
+### v3.1.1 session — 2026-04-14
+**Type:** Trading day (EA 0 trades, Casey +$26.70 manual)
+- EA took 0 trades — third consecutive day. Plan levels were set but entry logic still not triggering.
+- Historical levels now showing on chart (D-2 H, D-3 H, D-3 L, D-4 H confirmed in Experts tab).
+- PM levels now updating live (PMH=6920.0, PML=6898.5 shown before 9:29).
+- Multiple EA restarts during session (v3.1 → v3.1.1) — OR levels only available after 12:49 PM, missing entry window.
+- Today's levels: PDH=6893.2, PDL=6795.2, PMH=6920.0, PML=6898.5, ORH=6931.4, ORL=6907.9
+
+**Casey's manual trades (MidasFX, +$5 offset to Coinexx):**
+
+Trade 1: Buy 6903.1 (≈6908 Coinexx) → 6904.3 = +$1.20 (7 min, PM Low zone test)
+
+Trade 2: Buy 6913.6 (≈6918 Coinexx) → TP 6934.0 = +$20.40 (41 min, THE TRADE)
+- Entry at exactly PlanLong1 level (6918)
+- Stop set at 6906.8 (≈6912 Coinexx, below OR Low)
+- TP set at 6934.0 (≈6939 Coinexx, OR High area)
+- Trail management: 9:50 trailed stop to 6914.9 (near BE), 10:10 trailed to 6917.0 (plan level), 10:17 TP hit
+- Risk $7, Reward $20 = 3:1 R:R
+
+Trade 3: Sell 6957.8 (≈6963 Coinexx) → TP 6952.7 = +$5.10 (2 min, afternoon resistance scalp)
+
+**Casey's trade management framework (learned from journal):**
+1. Entry near plan level with directional conviction
+2. Stop at nearest key level below/above (OR Low, PM Low — not fixed buffer)
+3. Target at next key level above/below (OR High, PM High)
+4. Trail stop in stages: first near breakeven → then to the plan level → then let TP hit
+5. Does NOT use fixed 1R/2R system — uses level-to-level targets
+6. Active management, not set-and-forget
+7. Quick to take profit when available (Trade 3: 2 min)
+
+**Why EA didn't trade (diagnosis):**
+- Plan levels were set (PlanLong1=6918, PlanLong2=6898, PlanShort1=6918, PlanShort2=6893)
+- Price reached all plan levels during the session
+- Entry logic was updated but EA was restarted multiple times, OR levels not available during entry window
+- Need debug prints on candle-by-candle evaluation to see exactly why CheckPlanLevel returns false
+
+**Action items for tomorrow:**
+- Add debug print inside CheckPlanLevel to log every candle evaluation near plan levels
+- Casey pastes plan in chat, Claude updates EA code with levels before session
+- No more manual EA input — workflow is chat → code → compile → deploy
+
+**Late session fixes (applied to v3.1.1):**
+- **Entry window changed to 9:30 EST** (was 9:45). Casey took the main trade at 9:36 — PMH broke before OR was complete. The 15-minute OR wait was costing trades.
+- **D-3 H and D-2 H respected perfectly today.** Price bounced off both historical levels during the session. Historical levels are proving reliable as support/resistance zones. Must include relevant historical levels in daily plan going forward.
+- **Live status line added (top-left).** Single line shows EA state: waiting for session with plan levels listed, scanning with nearest level and distance, managing trade with live P&L/stop/target, or session over. Updates every tick. Shows "NO PLAN LEVELS SET" if inputs empty — instant visual confirmation EA is configured.
+- **PM levels now recalculate every tick during premarket.** Was only calculating once when `!g_pmReady`. Now calls CalculatePremarketLevels on every tick so PM High/Low update live as overnight session develops.
+
 ### v3.1 — 2026-04-13
 **Type:** Major cleanup + feature
 - **Stripped EA down to essentials.** Removed 412 lines (2781 → 2369). 15 inputs removed, 2 old setup detection functions removed, status panel removed, trend arrow display removed.
@@ -443,6 +499,7 @@ Levels serve two distinct purposes:
 | 2026-04-09 | v2.9 | Bullish | 6 | 1 | -$6.50 | Biggest win +$36.50 (PMH Breakout Long 2R). Proximity detection working. 3 setup types fired. Partial close working. PMH contested 90min before real breakout. |
 | 2026-04-10 | v2.9.1 | Bullish | 4 | 0 | -$68.40 | Worst day. 4x ORL Bounce Long at same weak level, all SL. Casey's plan identified 6848 as key level — EA ignored it. Strategy redesign started. |
 | 2026-04-13 | v3.1 | Bullish | 0 (EA) | 0 | $0.00 (EA) | EA took 0 trades — entry too rigid. Casey manual: +$21.50 (long from PDL/PMH/D-4H stacked zone). Plan was right, EA couldn't execute. |
+| 2026-04-14 | v3.1.1 | Bullish | 0 (EA) | 0 | $0.00 (EA) | EA 0 trades again (restarts during session). Casey manual: +$26.70. Trade 2 was exactly PlanLong1=6918, rode to OR High for +$20.40. Trade management documented. |
 
 ---
 

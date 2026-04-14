@@ -6,6 +6,92 @@ Live daily summaries: https://mt5.freedomincomeoptions.com/summary
 
 ---
 
+## 2026-04-14 — Day 8
+
+**EA Version:** v3.1.1 | **Trend:** Bullish | **Symbol:** SPXUSD
+**Grade:** Plan A+, EA Execution F (third day in a row)
+
+### Session overview
+
+| Metric | Value |
+|--------|-------|
+| EA trades | 0 |
+| EA P&L | $0.00 |
+| Casey manual trades | 3 |
+| Casey manual P&L | +$26.70 |
+| Market move | 6907 → 6978 (+71 pts) |
+
+### Levels
+
+| Level | Price |
+|-------|-------|
+| PDH | 6893.2 |
+| PDL | 6795.2 |
+| PM High | 6920.0 |
+| PM Low | 6898.5 |
+| OR High | 6931.4 |
+| OR Low | 6907.9 |
+| D-2 H | 6951.9 |
+| D-3 H | 6920.7 |
+| D-4 H | 6920.2 |
+
+### Casey's plan
+
+- **Bias:** Bullish — price above PDH overnight
+- **Yesterday:** Breakout in first minutes, rallied all day, very bullish
+- **Overnight:** Hit 6918 high
+- **Key decision level:** 6918 (old daily level, respected on daily chart)
+- **Long setups:** Breakout above 6918. Bounce at 6890-6900 PDH zone.
+- **Short setups:** Rejection at 6918. Break below PDH 6893.
+- **Additional level identified:** D-3 L at 6767 if PML/ORL stack near it.
+
+### Casey's manual trades (MidasFX, ~$5 offset to Coinexx)
+
+**Trade 1: Buy 6903.1 (≈6908) → 6904.3 = +$1.20 (7 min)**
+PM Low zone test. Small scalp.
+
+**Trade 2: Buy 6913.6 (≈6918) → TP 6934.0 (≈6939) = +$20.40 (41 min) ⭐**
+- Entry at exactly PlanLong1 (6918 on Coinexx)
+- 9:36 AM — entered on a bullish push near the level
+- 9:38 AM — SL set at 6906.8 (below OR Low 6907.9), TP set at 6934.0 (OR High area)
+- 9:50 AM — trailed SL to 6914.9 (near breakeven, +$1.30 locked)
+- 10:10 AM — trailed SL to 6917.0 (plan level, +$3.40 locked)
+- 10:17 AM — TP hit at 6934.0 for +$20.40
+- Risk: ~$7 | Reward: ~$20 | R:R = 3:1
+
+**Trade 3: Sell 6957.8 (≈6963) → TP 6952.7 (≈6958) = +$5.10 (2 min)**
+Afternoon resistance rejection. SL at 6965.8, TP at 6952.5. Hit TP in 2 minutes.
+
+### Casey's trade management framework
+
+| Step | What Casey does | How it differs from EA |
+|------|----------------|----------------------|
+| Entry | Near plan level, bullish/bearish candle | EA: candle must straddle level with close % filter |
+| Stop | At nearest key level (OR Low, PM Low) | EA: fixed buffer beyond plan level ($5) |
+| Target | At next key level (OR High, PM High) | EA: fixed 2R from entry |
+| Trail 1 | Move stop to near breakeven after price moves | EA: move to exact breakeven at 1R |
+| Trail 2 | Move stop to plan level as price extends | EA: no second trail |
+| Exit | TP at key level OR trail catches | EA: 2R target or force close |
+
+### What the EA needs to learn from this
+
+1. Stop placement should be at the nearest key level below entry (OR Low, PM Low), not a fixed $5 buffer
+2. Target should be at the next key level above entry (OR High, PM High), not fixed 2R
+3. Trail should be progressive — near BE first, then to the plan level, then wider if running
+4. Entry needs to fire when price is near the plan level and makes a directional candle — the current logic may be working but the EA was restarted during session and missed the window
+
+### Lessons learned
+
+1. Casey is now 3 for 3 on profitable manual trading days while the EA takes zero trades
+2. The plan is consistently identifying the right levels — the execution gap is purely technical
+3. Trade 2 was textbook: entry at plan level, stop at key level, target at key level, trail in stages
+4. Tomorrow: paste plan in chat → Claude codes levels → compile → deploy BEFORE session starts — no restarts during entry window
+5. **CRITICAL: Entry window must start at 9:30, not 9:45.** Casey took Trade 2 at 9:36 AM — PMH broke before OR was complete. The 15-minute wait was costing us trades. Changed to 9:30 open.
+6. **D-3 H and D-2 H levels were respected perfectly.** Price bounced off both historical levels during the session. These are valid bounce/rejection trade zones and should be included in tomorrow's plan if near current price. Historical levels are proving to be reliable support/resistance.
+7. **Live status line added.** Top-left shows what EA is doing at all times — scanning, managing, waiting, or no levels set. No more guessing if the EA is working.
+
+---
+
 ## 2026-04-13 — Day 7
 
 **EA Version:** v3.1 | **Trend:** Bullish (Above 10 EMA) | **Symbol:** SPXUSD
