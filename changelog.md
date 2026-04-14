@@ -1,3 +1,17 @@
+## 2026-04-13
+
+### [deploy] EA v3.1 — clean build, plan-driven only
+
+Stripped EA down to essentials: level identification (PDH, PDL, PMH, PML, ORH, ORL, D2-D10 historical) + plan-based trading. Removed 412 lines of dead code, 15 unused inputs, old setup detection system, and top-left status panel. Chart is clean — just levels and the legend.
+
+### [feature] Auto-populated levels on daily plan page
+
+Plan page now pulls levels automatically from EA's DAILY_OPEN webhook event. No more typing PDH/PDL/PM/OR prices manually. Refresh button updates levels after 9:30 when PM and OR are calculated.
+
+### [wip] Casey's plan was right, EA missed the trade
+
+Plan identified PDL (6811.5) as the key level. Price broke above PDL and rallied 25 points. EA took zero trades — entry detection too rigid. Casey manually traded +$21.50 on the same levels. Entry logic needs to be more flexible.
+
 ## 2026-04-10
 
 ### [wip] Strategy redesign — daily plan driven trading

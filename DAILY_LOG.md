@@ -6,6 +6,99 @@ Live daily summaries: https://mt5.freedomincomeoptions.com/summary
 
 ---
 
+## 2026-04-13 — Day 7
+
+**EA Version:** v3.1 | **Trend:** Bullish (Above 10 EMA) | **Symbol:** SPXUSD
+**Grade:** Plan A, Execution F
+
+### Session overview
+
+| Metric | Value |
+|--------|-------|
+| EA trades | 0 |
+| EA P&L | $0.00 |
+| Casey manual trades | 2 |
+| Casey manual P&L | +$21.50 |
+
+### Levels
+
+| Level | Price |
+|-------|-------|
+| PDH | 6848.2 |
+| PDL | 6811.5 |
+| PM High | 6803.1 |
+| PM Low | 6771.0 |
+| OR High | 6808.3 |
+| OR Low | 6795.2 |
+| D-2 H | ~6848 |
+| D-3 H | ~6841 |
+| D-3 L | ~6767 |
+| D-4 H | ~6801 |
+| D-4 L | ~6745 |
+
+### Casey's pre-market plan
+
+- **Bias:** Bullish but cautious — war news pushing lower, 7 days up, expecting pullback
+- **Yesterday:** Bounced off PDH and broke down below PDL. Bearish below those levels. Price going to D-3 L support.
+- **Overnight:** In a range
+- **Key levels:** 6848 (PDH/D-2H resistance), 6811.5 (PDL), 6801 (D-4H), 6767 (D-3L), 6745 (D-4L)
+- **Longs:** Level at D-4L or break above PDL — if price breaks above, look for retest of PDL
+- **Shorts:** Bounce off PDL or D-4H, or break below D-4L
+- **Invalidation:** Levels control the plan
+- **Stops:** Clearly below the levels
+
+### EA plan levels programmed
+
+| Input | Value | Why |
+|-------|-------|-----|
+| PlanLong1 | 6811.5 | PDL bounce/breakout |
+| PlanLong2 | 6745.0 | D-4 Low deep support |
+| PlanShort1 | 6811.5 | PDL rejection short |
+| PlanShort2 | 6848.2 | PDH resistance short |
+| PlanShort3 | 6767.0 | D-3 Low breakdown |
+
+### What happened
+
+Price opened around 6790-6800, below PDL. Dipped to ~6795 in premarket/OR area, then rallied steadily from 6795 up through 6811.5 (PDL) and kept going to 6835+ by afternoon. A clean bullish day.
+
+The EA took zero trades despite having PDL (6811.5) programmed as PlanLong1. The breakout through 6811.5 likely happened either before the 9:45 entry window or without a candle cleanly straddling the level.
+
+### Casey's manual trades (MidasFX account)
+
+**Trade 1: Short at 6799.1 → 6798.1 = +$1.00**
+Quick scalp near PDL/D-4H zone. Small win.
+
+**Trade 2: Long at 6803.6 → 6824.1 = +$20.50**
+THE trade of the day. Bought the stacked support zone: PDL (6811.5), PM High (6803.1), D-4 High (6801). Three levels converging = strong support. Rode it 20 points as price broke above PDL and kept going. This is exactly what the plan said to do.
+
+### What went right
+
+- The plan was excellent — correctly identified PDL zone as key level with stacked support (PMH + D-4H)
+- Casey saw the setup and executed manually for +$21.50
+- Historical levels (D-4H at 6801) visible on chart and used in the plan
+- v3.1 chart is clean — just levels and legend, no clutter
+
+### What went wrong
+
+- EA took zero trades on a +20 point move that the plan identified
+- Entry detection too rigid — requires M5 candle to straddle level with proximity check
+- Price may have crossed PDL before 9:45 entry window
+- The way Casey enters (sees price in the zone, buys the move) doesn't translate to the EA's candle-straddle logic
+
+### Key insight
+
+Casey's second consecutive day of profitable manual trading on the plan levels while the EA does nothing. The plan is working — the execution bridge between plan and EA is not. The entry logic needs a fundamentally different approach for plan-based levels.
+
+### System changes made today
+
+- EA v3.1 deployed: stripped down, clean chart, plan-only trading
+- Plan page auto-populates levels from EA webhook
+- Refresh button for PM/OR levels after 9:30
+- Top-left status panel removed from chart
+- Legend updated with version and historical levels
+
+---
+
 ## 2026-04-10 — Day 6
 
 **EA Version:** v2.9.1 | **Trend:** Bullish (Above 10 EMA) | **Symbol:** SPXUSD

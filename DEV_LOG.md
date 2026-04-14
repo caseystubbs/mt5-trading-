@@ -20,6 +20,34 @@ Automated S&P 500 breakout trading system that trades liquidity sweeps at key in
 
 ## Changelog
 
+### v3.1 — 2026-04-13
+**Type:** Major cleanup + feature
+- **Stripped EA down to essentials.** Removed 412 lines (2781 → 2369). 15 inputs removed, 2 old setup detection functions removed, status panel removed, trend arrow display removed.
+- **Inputs removed:** UsePDH_PDL, UsePremarketLevels, UseOpeningRangeLevels, RequireBullish/BearishBreakoutCandle, UseStrongCloseFilter, StopBufferPrice, UseLevelBasedStops, AllowLongTrades, AllowShortTrades, OneTradePerDay, UseDailyTrendFilter, DrawEntryMarkers, DrawStopAndTargets, UseDailyPlan, ShowDailyTrendArrow, DailyEMAPeriod
+- **Functions removed:** GetLongSetup() and GetShortSetup() — the old 12-setup-type system. Replaced by plan-only detection (GetPlanLongSetup/GetPlanShortSetup).
+- **Top-left panel removed:** Clock, status text, levels summary, trigger text — all gone. Chart is clean with just level lines and the bottom-left legend.
+- **Legend updated:** Now shows version number (v3.1) and historical levels (D-2 H, D-3 L, etc.) with prices.
+- **Defaults updated:** FixedLots=2.0, WebhookURL=mt5.freedomincomeoptions.com, PlanStopBuffer=5.0
+- **Plan page auto-levels:** Key levels field auto-populates from EA's DAILY_OPEN webhook. Refresh button for PM/OR after 9:30.
+
+### v3.1 session — 2026-04-13
+**Type:** Trading day (plan-based, EA took 0 trades, Casey +$21.50 manual)
+- EA deployed with plan levels: PlanLong1=6811.5 (PDL), PlanLong2=6745 (D-4L), PlanShort1=6811.5 (PDL rejection), PlanShort2=6848.2 (PDH), PlanShort3=6767 (D-3L)
+- EA took 0 trades all session — price crossed above PDL but entry detection didn't trigger
+- Likely cause: candle didn't straddle 6811.5 cleanly enough for proximity check, or breakout happened before 9:45 entry window
+- Casey manually traded on MidasFX account (separate broker): 2 trades, +$21.50
+  - Short 6799.1 → 6798.1 = +$1.00 (quick scalp near PDL zone)
+  - Long 6803.6 → 6824.1 = +$20.50 (bought the PDL/PMH/D-4H stacked support zone, rode 20 pts)
+- Today's actual levels: PDH=6848.2, PDL=6811.5, PMH=6803.1, PML=6771.0, ORH=6808.3, ORL=6795.2
+- Historical: D-2H=6848, D-3H=6841, D-3L=6767, D-4H=6801, D-4L=6745
+
+**Key observations:**
+- Casey's plan correctly identified the PDL zone as the key level — stacked with PMH (6803) and D-4H (6801)
+- The long from 6803.6 was in the exact zone the plan highlighted
+- EA's entry trigger is too rigid for plan-based trading — needs rethinking
+- "Casey's plan was smarter than the EA" — second day in a row this is true
+- Entry logic for plan levels may need a different approach than M5 candle straddle
+
 ### v2.9.1 session — 2026-04-10
 **Type:** Strategy review (worst day — critical lessons)
 - 4 trades taken, 0 wins, -$66.80 (real MT5 P&L: -$68.40)
@@ -414,6 +442,7 @@ Levels serve two distinct purposes:
 | 2026-04-08 | v2.8 | Bullish | 7 | 1 | -$32.00 | First 2R hit (+$21.60). PDH continuation trade won. PML breakdown hit 1R then BE'd out. Entry logic too simplistic — needs redesign |
 | 2026-04-09 | v2.9 | Bullish | 6 | 1 | -$6.50 | Biggest win +$36.50 (PMH Breakout Long 2R). Proximity detection working. 3 setup types fired. Partial close working. PMH contested 90min before real breakout. |
 | 2026-04-10 | v2.9.1 | Bullish | 4 | 0 | -$68.40 | Worst day. 4x ORL Bounce Long at same weak level, all SL. Casey's plan identified 6848 as key level — EA ignored it. Strategy redesign started. |
+| 2026-04-13 | v3.1 | Bullish | 0 (EA) | 0 | $0.00 (EA) | EA took 0 trades — entry too rigid. Casey manual: +$21.50 (long from PDL/PMH/D-4H stacked zone). Plan was right, EA couldn't execute. |
 
 ---
 
