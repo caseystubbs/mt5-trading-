@@ -56,7 +56,7 @@ async def init_db():
                 duration_minutes INTEGER,
                 lots DOUBLE PRECISION,
                 notes TEXT,
-                ea_version VARCHAR(10)
+                ea_version VARCHAR(100)
             );
 
             CREATE TABLE IF NOT EXISTS daily_summaries (
@@ -81,7 +81,7 @@ async def init_db():
                 rejection_reasons TEXT,
                 user_notes TEXT,
                 lessons_learned TEXT,
-                ea_version VARCHAR(10)
+                ea_version VARCHAR(100)
             );
 
             CREATE TABLE IF NOT EXISTS system_changelog (
