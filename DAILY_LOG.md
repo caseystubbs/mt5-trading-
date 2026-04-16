@@ -6,6 +6,86 @@ Live daily summaries: https://mt5.freedomincomeoptions.com/summary
 
 ---
 
+## 2026-04-15 — Day 9
+
+**EA Version:** v3.1.2 | **Trend:** Bullish | **Symbol:** SPXUSD
+**Grade:** Plan A+, EA Execution N/A (technical issues — would have been biggest win day yet)
+
+### Session overview
+
+| Metric | Value |
+|--------|-------|
+| EA trades | 0 |
+| EA P&L | $0.00 |
+| Casey manual trades | 0 |
+| Market move | 6961 → 7045+ (+84 pts) |
+| Plan accuracy | ✅ Both levels hit perfectly |
+
+### Levels
+
+| Level | Price |
+|-------|-------|
+| PDH | 6977.2 |
+| PDL | 6907.9 |
+| PM High | 6984.5 |
+| PM Low | 6961.8 |
+| OR High | 6994.3 |
+| OR Low | 6973.8 |
+
+### Casey's plan
+
+- **Bias:** Neutral — PM range after big run up
+- **PMH:** 6983.0 | **PML:** 6961.8
+- **Long setups:** PMH breakout above 6983, PML bounce at 6961.8
+- **Short setups:** PMH rejection at 6983, PML breakdown at 6961.8
+
+### What actually happened
+
+Price opened the session right at the plan levels — PM Low at 6961.8 held as support and price broke out above PM High at 6983/6984.5, then ripped straight up to 7045+ by end of day. An 84-point bull run that touched both key plan levels perfectly.
+
+**The PMH breakout long at 6983 was the trade of the day.** Entry near 6983-6984, stop below PM Low at 6961.8 (~$21 risk), price ran to 7045+ = **60+ points of reward**. At 2 lots that would have been approximately **+$120 on the remaining lot after partial** — the biggest single-day result in the system's history.
+
+The PML bounce long at 6961.8 was also a valid setup if price had tested it first before breaking out.
+
+### Why the EA didn't trade
+
+Two compounding technical failures:
+
+1. **Webhook 500 errors all morning** — the `ea_version` field `"3.1.2 | Plan: Apr 15"` exceeded the `VARCHAR(10)` column limit in the database, crashing every POST to `/api/event`. Fixed at ~4:30 PM EST by altering both `trade_events` and `daily_summaries` columns to `VARCHAR(100)` and patching `main.py`.
+
+2. **EA loaded late** — by the time the EA was confirmed running and diagnostics checked (~10:34 EST), price had already broken through 6983 and was trading at 6997+. The plan levels were 14+ points below price, outside the `MaxProximityPrice = 20.0` window. The EA was watching the right levels — the market had already moved through them.
+
+### The hypothetical trade
+
+| | Value |
+|-|-------|
+| Setup | PMH Breakout Long at 6983 |
+| Entry | ~6984 (ask at breakout) |
+| Stop | 6978 (PMH - $5 buffer) |
+| Risk | ~$6 price / ~$120 at 2 lots |
+| 1R target | ~6990 |
+| 2R target | ~6996 |
+| Actual high | 7045+ |
+| Hypothetical P&L | **+$240–$480** depending on trail |
+
+This would have been by far the largest winning day in the system's history.
+
+### Lessons learned
+
+1. **The plan was perfect — fourth consecutive day of accurate level identification.** PMH and PML were the exact pivots the market used. The system works.
+2. **Technical debt is costing real money.** The VARCHAR(10) bug was introduced when `EA_VERSION` was changed to include the date string. A schema constraint caused a full day of missed webhook events.
+3. **EA must be loaded and confirmed BEFORE the session starts.** The 9:30 entry window is critical — if the EA isn't running and verified by 9:15 EST, the first move off the open will be missed.
+4. **Tomorrow:** Confirm EA running and webhook returning 200s before 9:15 EST. Update plan levels to reflect new price area (7045+).
+
+### System fixes made today
+
+- `ea_version VARCHAR(10)` → `VARCHAR(100)` in both `trade_events` and `daily_summaries` tables
+- `main.py` patched and pushed to GitHub so fix persists on redeploy
+- Timezone diagnostic block added to `OnInit()` for future debugging
+- Premarket log spam bug fixed — was printing 34,000+ identical lines per session
+
+---
+
 ## 2026-04-14 — Day 8
 
 **EA Version:** v3.1.1 | **Trend:** Bullish | **Symbol:** SPXUSD

@@ -1,3 +1,23 @@
+## 2026-04-15
+
+### [fix] ea_version VARCHAR(10) → VARCHAR(100) in trade_events and daily_summaries
+
+EA version string "3.1.2 | Plan: Apr 15" exceeded the 10-character column limit, causing 500 errors on every webhook POST all day. Fixed by ALTER TABLE on both tables via Codespaces + asyncpg. main.py CREATE TABLE statements patched to VARCHAR(100) so fix persists on redeploy.
+
+### [fix] Premarket log spam — 34,000+ identical lines per session
+
+CalculatePremarketLevels() was logging "Premarket ready" on every tick after finalization due to inverted throttle logic. Fixed: now logs once when first ready, once more when finalized at 9:29 EST, silent after that.
+
+### [feature] Timezone diagnostic block in OnInit()
+
+Added detailed startup diagnostic printing GMT, broker, and EST times, EDT/EST mode, entry window status, force close status, and broker GMT offset. Helps diagnose timezone issues without guessing.
+
+### [session] Day 9 — Apr 15 — Plan A+, EA 0 trades (technical failures)
+
+Plan was perfect — PMH at 6983 and PML at 6961.8 were the exact session pivots. Price broke above PMH and ran 84 points to 7045+. Hypothetical PMH breakout long would have been +$240–$480, the largest single-day result in system history. EA missed due to: (1) VARCHAR bug causing 500 errors all morning, (2) EA confirmed running at 10:34 EST after price already through 6983.
+
+---
+
 ## 2026-04-14
 
 ### [deploy] EA v3.1.1 — flexible entry logic, live PM levels, wider historical scan

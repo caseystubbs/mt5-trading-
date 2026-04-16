@@ -20,6 +20,36 @@ Automated S&P 500 breakout trading system that trades liquidity sweeps at key in
 
 ## Changelog
 
+### v3.1.2 — 2026-04-15
+**Type:** Bug fixes + diagnostics
+
+- **ea_version column widened:** `VARCHAR(10)` → `VARCHAR(100)` in both `trade_events` and `daily_summaries` tables. The version string `"3.1.2 | Plan: Apr 15"` (22 chars) was crashing every webhook POST with `StringDataRightTruncationError`. Fixed via asyncpg ALTER TABLE from Codespaces. `main.py` CREATE TABLE statements patched so fix persists on redeploy.
+- **Premarket log spam fixed:** `CalculatePremarketLevels()` was printing "Premarket ready" on every tick after finalization — produced 34,000+ identical log lines per session. Throttle logic corrected: logs once on first ready, once on finalization, silent after that.
+- **Timezone diagnostic added to OnInit():** Prints GMT time, broker time, EA-calculated EST time, EDT/EST mode, entry window open/closed, past force close yes/no, and broker GMT offset in hours. Confirmed broker is GMT+3 (EDT mode active, correct EST offset).
+
+### v3.1.2 session — 2026-04-15
+**Type:** Trading day (EA 0 trades, Casey 0 manual trades)
+
+**The plan was right. Everything else failed.**
+
+Today's plan levels — PMH 6983.0 and PML 6961.8 — were the exact session pivots. Price held PML as support and broke above PMH, then ran 84 points to 7045+. The PMH breakout long setup was textbook: entry ~6984, stop ~6978 (PMH - $5 buffer), price ran 60+ points. Hypothetical P&L: **+$240–$480** depending on trail — would have been the biggest single winning day in system history.
+
+**Why the EA didn't trade:**
+1. **Webhook 500 all morning** — VARCHAR(10) bug crashed every event POST. No trade events logged until fix applied at ~4:30 PM EST.
+2. **EA confirmed running at 10:34 EST** — price was already at 6997, 14+ points above plan levels. Outside MaxProximityPrice = 20.0 window.
+
+**Timezone diagnostic confirmed:**
+- Broker = GMT+3 ✅
+- EDT active (GMT-4) ✅  
+- EST calc = 10:34 at load time ✅
+- Entry window = OPEN ✅
+- Force close = NO ✅
+
+**Key action items:**
+- EA must be loaded, compiled, and webhook verified (200 response) BEFORE 9:15 EST every day
+- Add pre-session checklist: (1) EA attached, (2) plan levels coded, (3) webhook returning 200, (4) status bar showing SCANNING
+- Consider adding a startup webhook ping so we can confirm connectivity before the session opens
+
 ### v3.1.1 — 2026-04-14
 **Type:** Entry logic fix + features
 - **Entry logic rewritten:** Removed IsStrongBullishClose/IsStrongBearishClose filters from CheckLong/ShortSetup. CheckPlanLevel simplified — breakout long now just requires candle close above level + candle within proximity + bullish candle (close > open). Bounce long requires candle low within proximity of level + bullish + close at or above level. Same mirrored for shorts.
