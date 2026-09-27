@@ -16,7 +16,7 @@ from macrofx_engine import build_snapshot, choose_targets, performance_metrics
 router = APIRouter(prefix="/api/macrofx", tags=["macrofx"])
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
-API_KEY = os.environ.get("EA_API_KEY", "")
+API_KEY = os.environ.get("MACROFX_API_KEY", os.environ.get("EA_API_KEY", ""))
 _macro_pool: Optional[asyncpg.Pool] = None
 
 SCHEMA_SQL = """
