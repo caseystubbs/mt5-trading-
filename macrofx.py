@@ -151,7 +151,6 @@ async def macrofx_health():
 
 @router.post("/heartbeat")
 async def heartbeat(
-    x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"),
     account_id: str,
     balance: float = 0,
     equity: float = 0,
@@ -159,6 +158,7 @@ async def heartbeat(
     is_demo: bool = True,
     ea_version: str = "",
     broker: str = "MidasFX",
+    x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"),
 ):
     _verify(x_ea_api_key)
     if not is_demo:
@@ -173,7 +173,7 @@ async def heartbeat(
     return {"status":"ok"}
 
 @router.post("/positions-csv")
-async def positions_csv(x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"), account_id: str, body: str = Body(default="", media_type="text/plain")):
+async def positions_csv(account_id: str, body: str = Body(default="", media_type="text/plain"), x_ea_api_key: str = Header(default="", alias="X-EA-API-Key")):
     _verify(x_ea_api_key)
     pool = await get_pool()
     rows = []
@@ -195,7 +195,7 @@ async def positions_csv(x_ea_api_key: str = Header(default="", alias="X-EA-API-K
     return {"status":"ok","rows":len(rows)}
 
 @router.post("/bars-csv")
-async def bars_csv(x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"), symbol: str, body: str = Body(default="", media_type="text/plain")):
+async def bars_csv(symbol: str, body: str = Body(default="", media_type="text/plain"), x_ea_api_key: str = Header(default="", alias="X-EA-API-Key")):
     _verify(x_ea_api_key)
     symbol = symbol.upper()
     pool = await get_pool()
@@ -225,7 +225,6 @@ async def bars_csv(x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"),
 
 @router.post("/fill")
 async def fill(
-    x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"),
     account_id: str,
     symbol: str,
     action: str,
@@ -240,6 +239,7 @@ async def fill(
     commission: float = 0,
     strategy_version: str = "macrofx-v1",
     notes: str = "",
+    x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"),
 ):
     _verify(x_ea_api_key)
     pool = await get_pool()
