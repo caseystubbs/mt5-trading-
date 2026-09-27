@@ -9,6 +9,7 @@
  - Trading disabled by default
  - Max 0.01 lot per pair
  - Max 2 bridge-owned positions
+ - 10% local equity drawdown kill switch
  - Uses Magic Number 26092601
  - No martingale/grid/recovery sizing
 */
@@ -23,9 +24,11 @@ input int MaxPositions = 2;
 input int PollSeconds = 60;
 input int DailyBarsToUpload = 320;
 input int SlippagePoints = 30;
+input double MaxDrawdownPct = 10.0;
 
 string EA_VERSION = "MacroFX-MT4-Bridge-1.0";
-datetime g_lastBarUploadDay = 0;\nbool g_killed = false;
+datetime g_lastBarUploadDay = 0;
+bool g_killed = false;
 
 string UrlEncode(string s)
 {
@@ -58,8 +61,11 @@ int HttpRequest(string method,string url,string body,string &response)
    char data[];
    char result[];
    string response_headers="";
-   string headers="Content-Type: text/plain\r\n";
-   StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
+   string headers="Content-Type: text/plain\r\nX-EA-API-Key: "+ApiKey+"\r\n";
+
+   int data_size=StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
+   if(data_size>0) ArrayResize(data,data_size-1);
+
    ResetLastError();
    int code=WebRequest(method,url,headers,5000,data,result,response_headers);
    if(code==-1)
@@ -74,14 +80,15 @@ int HttpRequest(string method,string url,string body,string &response)
 
 void SendHeartbeat()
 {
-   string url=ApiBaseUrl+"/api/macrofx/heartbeat
-      +"&account_id="+UrlEncode(AccountId())
+   string url=ApiBaseUrl+"/api/macrofx/heartbeat"
+      +"?account_id="+UrlEncode(AccountId())
       +"&balance="+DoubleToString(AccountBalance(),2)
       +"&equity="+DoubleToString(AccountEquity(),2)
       +"&free_margin="+DoubleToString(AccountFreeMargin(),2)
       +"&is_demo="+(IsDemoAccount()?"true":"false")
       +"&ea_version="+UrlEncode(EA_VERSION)
       +"&broker="+UrlEncode("MidasFX");
+
    string resp="";
    int code=HttpRequest("POST",url,"",resp);
    if(code<200 || code>=300) Print("MacroFX heartbeat HTTP ",code," ",resp);
@@ -90,21 +97,26 @@ void SendHeartbeat()
 void SendPositions()
 {
    string body="symbol,ticket,side,lots,open_price,current_price,pnl,swap,commission,magic\n";
+
    for(int i=OrdersTotal()-1;i>=0;i--)
    {
       if(!OrderSelect(i,SELECT_BY_POS,MODE_TRADES)) continue;
       if(OrderMagicNumber()!=MagicNumber) continue;
+
       int type=OrderType();
       if(type!=OP_BUY && type!=OP_SELL) continue;
+
       string side=(type==OP_BUY?"LONG":"SHORT");
       int digits=(int)MarketInfo(OrderSymbol(),MODE_DIGITS);
       double current=(type==OP_BUY?MarketInfo(OrderSymbol(),MODE_BID):MarketInfo(OrderSymbol(),MODE_ASK));
+
       body += OrderSymbol()+","+IntegerToString(OrderTicket())+","+side+","
          +DoubleToString(OrderLots(),2)+","+DoubleToString(OrderOpenPrice(),digits)+","
          +DoubleToString(current,digits)+","+DoubleToString(OrderProfit(),2)+","
          +DoubleToString(OrderSwap(),2)+","+DoubleToString(OrderCommission(),2)+","
          +IntegerToString(OrderMagicNumber())+"\n";
    }
+
    string url=ApiBaseUrl+"/api/macrofx/positions-csv?account_id="+UrlEncode(AccountId());
    string resp="";
    int code=HttpRequest("POST",url,body,resp);
@@ -114,6 +126,7 @@ void SendPositions()
 string NormalizeBrokerSymbol(string canonical)
 {
    if(MarketInfo(canonical,MODE_POINT)>0) return canonical;
+
    for(int i=0;i<SymbolsTotal(true);i++)
    {
       string s=SymbolName(i,true);
@@ -126,8 +139,10 @@ string CanonicalSymbol(string brokerSymbol)
 {
    string pairs[]={"EURUSD","GBPUSD","AUDUSD","NZDUSD","USDJPY","USDCAD","USDCHF",
                    "EURGBP","EURJPY","GBPJPY","AUDJPY","CADJPY","EURAUD","GBPAUD"};
+
    for(int i=0;i<ArraySize(pairs);i++)
       if(StringFind(brokerSymbol,pairs[i],0)>=0) return pairs[i];
+
    return brokerSymbol;
 }
 
@@ -135,16 +150,23 @@ void UploadBarsForSymbol(string canonical)
 {
    string symbol=NormalizeBrokerSymbol(canonical);
    if(MarketInfo(symbol,MODE_POINT)<=0) return;
+
    string body="date,close\n";
-   int count=MathMin(DailyBarsToUpload,iBars(symbol,PERIOD_D1)-1);
+   int total=iBars(symbol,PERIOD_D1);
+   if(total<=2) return;
+
+   int count=MathMin(DailyBarsToUpload,total-1);
+
    for(int shift=count;shift>=1;shift--)
    {
       datetime t=iTime(symbol,PERIOD_D1,shift);
       double c=iClose(symbol,PERIOD_D1,shift);
       if(t<=0 || c<=0) continue;
+
       int digits=(int)MarketInfo(symbol,MODE_DIGITS);
       body += TimeToString(t,TIME_DATE)+","+DoubleToString(c,digits)+"\n";
    }
+
    string url=ApiBaseUrl+"/api/macrofx/bars-csv?symbol="+canonical;
    string resp="";
    int code=HttpRequest("POST",url,body,resp);
@@ -158,7 +180,9 @@ void UploadDailyBarsIfNeeded()
 
    string pairs[]={"EURUSD","GBPUSD","AUDUSD","NZDUSD","USDJPY","USDCAD","USDCHF",
                    "EURGBP","EURJPY","GBPJPY","AUDJPY","CADJPY","EURAUD","GBPAUD"};
+
    for(int i=0;i<ArraySize(pairs);i++) UploadBarsForSymbol(pairs[i]);
+
    g_lastBarUploadDay=today;
 }
 
@@ -166,11 +190,14 @@ double TargetLotsFor(string canonical,string targetsText)
 {
    string lines[];
    int n=StringSplit(targetsText,'\n',lines);
+
    for(int i=0;i<n;i++)
    {
       if(StringFind(lines[i],"TARGET,",0)!=0) continue;
+
       string parts[];
       int m=StringSplit(lines[i],',',parts);
+
       if(m>=4 && parts[1]==canonical)
          return StringToDouble(parts[2]);
    }
@@ -180,28 +207,35 @@ double TargetLotsFor(string canonical,string targetsText)
 int BridgeOpenPositions()
 {
    int n=0;
+
    for(int i=OrdersTotal()-1;i>=0;i--)
-      if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES) && OrderMagicNumber()==MagicNumber &&
-         (OrderType()==OP_BUY || OrderType()==OP_SELL)) n++;
+   {
+      if(!OrderSelect(i,SELECT_BY_POS,MODE_TRADES)) continue;
+      if(OrderMagicNumber()!=MagicNumber) continue;
+      if(OrderType()==OP_BUY || OrderType()==OP_SELL) n++;
+   }
    return n;
 }
 
 bool CloseTicket(int ticket)
 {
    if(!OrderSelect(ticket,SELECT_BY_TICKET)) return false;
+
    string sym=OrderSymbol();
    int type=OrderType();
    double lots=OrderLots();
    double price=(type==OP_BUY?MarketInfo(sym,MODE_BID):MarketInfo(sym,MODE_ASK));
+
    bool ok=OrderClose(ticket,lots,price,SlippagePoints,clrNONE);
    if(!ok) Print("MacroFX close failed ticket=",ticket," err=",GetLastError());
+
    return ok;
 }
 
 void SendFill(string canonical,string action,double lots,int ticket,double requested,double filled,string notes)
 {
-   string url=ApiBaseUrl+"/api/macrofx/fill
-      +"&account_id="+UrlEncode(AccountId())
+   string url=ApiBaseUrl+"/api/macrofx/fill"
+      +"?account_id="+UrlEncode(AccountId())
       +"&symbol="+canonical
       +"&action="+UrlEncode(action)
       +"&lots="+DoubleToString(lots,2)
@@ -210,19 +244,70 @@ void SendFill(string canonical,string action,double lots,int ticket,double reque
       +"&fill_price="+DoubleToString(filled,8)
       +"&strategy_version=macrofx-v1"
       +"&notes="+UrlEncode(notes);
+
    string resp="";
-   HttpRequest("POST",url,"",resp);
+   int code=HttpRequest("POST",url,"",resp);
+   if(code<200 || code>=300) Print("MacroFX fill HTTP ",code," ",resp);
+}
+
+string HwmKey()
+{
+   return "FIO_MACROFX_HWM_"+AccountId();
+}
+
+bool DrawdownKillTriggered()
+{
+   string key=HwmKey();
+   double eq=AccountEquity();
+   if(eq<=0) return false;
+
+   double hwm=eq;
+
+   if(GlobalVariableCheck(key))
+      hwm=GlobalVariableGet(key);
+   else
+      GlobalVariableSet(key,hwm);
+
+   if(eq>hwm)
+   {
+      hwm=eq;
+      GlobalVariableSet(key,hwm);
+   }
+
+   double dd=(hwm-eq)/hwm*100.0;
+
+   if(dd < MaxDrawdownPct) return false;
+
+   if(!g_killed)
+      Print("MacroFX KILL SWITCH: drawdown=",DoubleToString(dd,2),
+            "% HWM=",DoubleToString(hwm,2),
+            " equity=",DoubleToString(eq,2));
+
+   g_killed=true;
+
+   for(int i=OrdersTotal()-1;i>=0;i--)
+   {
+      if(!OrderSelect(i,SELECT_BY_POS,MODE_TRADES)) continue;
+      if(OrderMagicNumber()!=MagicNumber) continue;
+      if(OrderType()!=OP_BUY && OrderType()!=OP_SELL) continue;
+      CloseTicket(OrderTicket());
+   }
+
+   return true;
 }
 
 void ReconcileTargets(string targetsText)
 {
    if(!EnableTrading) return;
+   if(g_killed || DrawdownKillTriggered()) return;
+
    if(DemoOnly && !IsDemoAccount())
    {
       Print("MacroFX BLOCKED: bridge is demo-only.");
       return;
    }
 
+   // Flatten bridge-owned positions that are no longer targets or have reversed.
    for(int i=OrdersTotal()-1;i>=0;i--)
    {
       if(!OrderSelect(i,SELECT_BY_POS,MODE_TRADES)) continue;
@@ -238,34 +323,45 @@ void ReconcileTargets(string targetsText)
          int ticket=OrderTicket();
          double lots=OrderLots();
          double req=(OrderType()==OP_BUY?MarketInfo(OrderSymbol(),MODE_BID):MarketInfo(OrderSymbol(),MODE_ASK));
+
          if(CloseTicket(ticket))
             SendFill(canonical,"CLOSE",lots,ticket,req,req,"reconciliation");
       }
    }
 
+   // Open missing targets. v1 deliberately uses 0.01-lot targets only.
    string lines[];
    int n=StringSplit(targetsText,'\n',lines);
+
    for(int k=0;k<n;k++)
    {
       if(StringFind(lines[k],"TARGET,",0)!=0) continue;
+
       string p[];
       int m=StringSplit(lines[k],',',p);
       if(m<4) continue;
 
       string canonical=p[1];
       double target=StringToDouble(p[2]);
+
       if(MathAbs(target)<0.0001) continue;
 
-      target=(target>0?MathMin(target,MaxLotPerPair):-MathMin(MathAbs(target),MaxLotPerPair));
+      target=(target>0
+         ? MathMin(target,MaxLotPerPair)
+         : -MathMin(MathAbs(target),MaxLotPerPair));
 
       bool already=false;
+
       for(int j=OrdersTotal()-1;j>=0;j--)
       {
          if(!OrderSelect(j,SELECT_BY_POS,MODE_TRADES)) continue;
          if(OrderMagicNumber()!=MagicNumber) continue;
          if(CanonicalSymbol(OrderSymbol())!=canonical) continue;
+
          double actual=(OrderType()==OP_BUY?OrderLots():-OrderLots());
-         if((target>0 && actual>0) || (target<0 && actual<0)) already=true;
+
+         if((target>0 && actual>0) || (target<0 && actual<0))
+            already=true;
       }
 
       if(already) continue;
@@ -274,10 +370,37 @@ void ReconcileTargets(string targetsText)
       string sym=NormalizeBrokerSymbol(canonical);
       int cmd=(target>0?OP_BUY:OP_SELL);
       double lots=MathAbs(target);
+
+      double minLot=MarketInfo(sym,MODE_MINLOT);
+      double lotStep=MarketInfo(sym,MODE_LOTSTEP);
+
+      if(minLot>0 && lots<minLot)
+      {
+         Print("MacroFX skip ",canonical,": target lots below broker minimum.");
+         continue;
+      }
+
+      if(lotStep>0)
+         lots=MathFloor(lots/lotStep+0.0000001)*lotStep;
+
       double req=(cmd==OP_BUY?MarketInfo(sym,MODE_ASK):MarketInfo(sym,MODE_BID));
 
       ResetLastError();
-      int ticket=OrderSend(sym,cmd,lots,req,SlippagePoints,0,0,"FIO MacroFX",MagicNumber,0,clrNONE);
+
+      int ticket=OrderSend(
+         sym,
+         cmd,
+         lots,
+         req,
+         SlippagePoints,
+         0,
+         0,
+         "FIO MacroFX",
+         MagicNumber,
+         0,
+         clrNONE
+      );
+
       if(ticket<0)
       {
          Print("MacroFX OrderSend failed ",canonical," err=",GetLastError());
@@ -285,7 +408,15 @@ void ReconcileTargets(string targetsText)
       }
 
       if(OrderSelect(ticket,SELECT_BY_TICKET))
-         SendFill(canonical,(cmd==OP_BUY?"OPEN_LONG":"OPEN_SHORT"),lots,ticket,req,OrderOpenPrice(),"target_reconciliation");
+         SendFill(
+            canonical,
+            (cmd==OP_BUY?"OPEN_LONG":"OPEN_SHORT"),
+            lots,
+            ticket,
+            req,
+            OrderOpenPrice(),
+            "target_reconciliation"
+         );
    }
 }
 
@@ -294,16 +425,19 @@ void PollTargets()
    string url=ApiBaseUrl+"/api/macrofx/targets-text?account_id="+UrlEncode(AccountId());
    string resp="";
    int code=HttpRequest("GET",url,"",resp);
+
    if(code==409)
    {
       Print("MacroFX target poll blocked: ",resp);
       return;
    }
+
    if(code<200 || code>=300)
    {
       Print("MacroFX targets HTTP ",code," ",resp);
       return;
    }
+
    ReconcileTargets(resp);
 }
 
@@ -311,15 +445,23 @@ int OnInit()
 {
    if(DemoOnly && !IsDemoAccount())
    {
-      Alert("FIO MacroFX Bridge is DEMO ONLY. Attach to a demo account.");
+      Alert("FIO MacroFX Bridge is DEMO ONLY. Attach it to a demo account.");
       return(INIT_FAILED);
    }
 
    EventSetTimer(MathMax(10,PollSeconds));
-   Print("FIO MacroFX Bridge ",EA_VERSION," initialized. Trading=",EnableTrading?"ON":"OFF");
+
+   Print(
+      "FIO MacroFX Bridge ",
+      EA_VERSION,
+      " initialized. Trading=",
+      EnableTrading?"ON":"OFF"
+   );
+
    SendHeartbeat();
    SendPositions();
    UploadDailyBarsIfNeeded();
+
    return(INIT_SUCCEEDED);
 }
 
@@ -330,6 +472,7 @@ void OnDeinit(const int reason)
 
 void OnTimer()
 {
+   DrawdownKillTriggered();
    SendHeartbeat();
    SendPositions();
    UploadDailyBarsIfNeeded();
