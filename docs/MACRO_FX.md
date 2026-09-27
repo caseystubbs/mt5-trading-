@@ -28,7 +28,7 @@ Railway stores:
 1. Compile mt4/FIO_MacroFX_Bridge.mq4 in MetaEditor.
 2. Attach it to one chart in MidasFX desktop MT4.
 3. Set ApiBaseUrl=https://mt5.freedomincomeoptions.com.
-4. Set ApiKey to the same value as Railway EA_API_KEY.
+4. Put the API key only in `MQL4/Files/fio_macrofx.key`; the EA reads it from that local file.
 5. MT4 -> Tools -> Options -> Expert Advisors -> Allow WebRequest for https://mt5.freedomincomeoptions.com.
 6. Keep DemoOnly=true and EnableTrading=false for the first connectivity test.
 7. Confirm /api/macrofx/health receives heartbeats and bars.
@@ -42,8 +42,8 @@ Friday after the trading week:
 1. MT4 has already uploaded daily closes.
 2. Railway decomposes pair returns into individual currency factors.
 3. 21/63/126/252-day volatility-normalized momentum is calculated.
-4. Currencies are ranked strongest to weakest.
-5. Up to two independent strongest-vs-weakest pair expressions are selected.
+4. Currencies are ranked strongest to weakest across the full 28-pair G8 universe when MidasFX provides the symbol/history.
+5. Up to two independent strongest-vs-weakest pair expressions are selected; unsupported MidasFX symbols are skipped automatically.
 6. Target set is written to Postgres.
 7. MT4 reconciles only MagicNumber 26092601 positions to those targets.
 8. MT4 posts fills, spreads, swaps and commissions.
