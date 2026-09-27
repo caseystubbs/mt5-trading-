@@ -419,7 +419,17 @@ async def targets_text(x_ea_api_key: str = Header(default="", alias="X-EA-API-Ke
         )
 
     qualifying_pairs = sorted(str(r["symbol"]) for r in qualifying_rows)
-    stored_pairs = sorted((latest_run["available_pairs_json"] or [])) if latest_run else []
+
+    stored_pairs = []
+    if latest_run:
+        raw_pairs = latest_run["available_pairs_json"] or []
+        if isinstance(raw_pairs, str):
+            try:
+                raw_pairs = json.loads(raw_pairs)
+            except Exception:
+                raw_pairs = []
+        stored_pairs = sorted(str(x) for x in raw_pairs)
+
     has_new_pair_history = bool(set(qualifying_pairs) - set(stored_pairs))
 
     # Bootstrap once, and refresh once when newly supported broker pairs acquire enough history.
