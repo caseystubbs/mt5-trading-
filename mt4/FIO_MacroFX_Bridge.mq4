@@ -28,7 +28,7 @@ input int BarRetryMinutes = 15;
 input int SlippagePoints = 30;
 input double MaxDrawdownPct = 10.0;
 
-string EA_VERSION = "MacroFX-MT4-Bridge-1.3";
+string EA_VERSION = "MacroFX-MT4-Bridge-1.4";
 string g_apiKey = "";
 datetime g_lastBarAttempt = 0;
 datetime g_lastBarUploadDay = 0;
@@ -158,10 +158,14 @@ string NormalizeBrokerSymbol(string canonical)
 {
    if(MarketInfo(canonical,MODE_POINT)>0) return canonical;
 
-   for(int i=0;i<SymbolsTotal(true);i++)
+   for(int i=0;i<SymbolsTotal(false);i++)
    {
-      string s=SymbolName(i,true);
-      if(StringFind(s,canonical,0)>=0) return s;
+      string s=SymbolName(i,false);
+      if(StringFind(s,canonical,0)>=0)
+      {
+         SymbolSelect(s,true);
+         return s;
+      }
    }
    return canonical;
 }
@@ -169,7 +173,10 @@ string NormalizeBrokerSymbol(string canonical)
 string CanonicalSymbol(string brokerSymbol)
 {
    string pairs[]={"EURUSD","GBPUSD","AUDUSD","NZDUSD","USDJPY","USDCAD","USDCHF",
-                   "EURGBP","EURJPY","GBPJPY","AUDJPY","CADJPY","EURAUD","GBPAUD"};
+                   "EURGBP","EURJPY","EURCHF","EURCAD","EURAUD","EURNZD",
+                   "GBPJPY","GBPCHF","GBPCAD","GBPAUD","GBPNZD",
+                   "AUDJPY","AUDCHF","AUDCAD","AUDNZD",
+                   "NZDJPY","NZDCHF","NZDCAD","CADJPY","CADCHF","CHFJPY"};
 
    for(int i=0;i<ArraySize(pairs);i++)
       if(StringFind(brokerSymbol,pairs[i],0)>=0) return pairs[i];
@@ -195,8 +202,8 @@ bool UploadBarsForSymbol(string canonical)
    string symbol=NormalizeBrokerSymbol(canonical);
    if(MarketInfo(symbol,MODE_POINT)<=0)
    {
-      Print("MacroFX bars ",canonical,": broker symbol not found.");
-      return false;
+      Print("MacroFX bars ",canonical,": broker symbol not found; skipping.");
+      return true;
    }
 
    int total=iBars(symbol,PERIOD_D1);
@@ -250,7 +257,10 @@ void UploadDailyBarsIfNeeded()
    g_lastBarAttempt=now;
 
    string pairs[]={"EURUSD","GBPUSD","AUDUSD","NZDUSD","USDJPY","USDCAD","USDCHF",
-                   "EURGBP","EURJPY","GBPJPY","AUDJPY","CADJPY","EURAUD","GBPAUD"};
+                   "EURGBP","EURJPY","EURCHF","EURCAD","EURAUD","EURNZD",
+                   "GBPJPY","GBPCHF","GBPCAD","GBPAUD","GBPNZD",
+                   "AUDJPY","AUDCHF","AUDCAD","AUDNZD",
+                   "NZDJPY","NZDCHF","NZDCAD","CADJPY","CADCHF","CHFJPY"};
 
    bool allOk=true;
    for(int i=0;i<ArraySize(pairs);i++)
@@ -325,7 +335,7 @@ void SendFill(string canonical,string action,double lots,int ticket,double reque
       +"&ticket="+IntegerToString(ticket)
       +"&requested_price="+DoubleToString(requested,8)
       +"&fill_price="+DoubleToString(filled,8)
-      +"&strategy_version=macrofx-v1"
+      +"&strategy_version=macrofx-v1.1"
       +"&notes="+UrlEncode(notes);
 
    string resp="";
