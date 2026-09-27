@@ -209,7 +209,7 @@ async def bars_csv(symbol: str, body: str = Body(default="", media_type="text/pl
             if len(p) < 2:
                 continue
             try:
-                d = datetime.strptime(p[0], "%Y-%m-%d").date()
+                d = datetime.strptime(p[0].replace(".", "-"), "%Y-%m-%d").date()
                 close = float(p[1])
             except Exception:
                 continue
