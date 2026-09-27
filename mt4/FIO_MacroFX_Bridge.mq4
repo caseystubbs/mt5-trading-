@@ -74,7 +74,7 @@ int HttpRequest(string method,string url,string body,string &response)
 
 void SendHeartbeat()
 {
-   string url=ApiBaseUrl+"/api/macrofx/heartbeat?api_key="+UrlEncode(ApiKey)
+   string url=ApiBaseUrl+"/api/macrofx/heartbeat
       +"&account_id="+UrlEncode(AccountId())
       +"&balance="+DoubleToString(AccountBalance(),2)
       +"&equity="+DoubleToString(AccountEquity(),2)
@@ -105,7 +105,7 @@ void SendPositions()
          +DoubleToString(OrderSwap(),2)+","+DoubleToString(OrderCommission(),2)+","
          +IntegerToString(OrderMagicNumber())+"\n";
    }
-   string url=ApiBaseUrl+"/api/macrofx/positions-csv?api_key="+UrlEncode(ApiKey)+"&account_id="+UrlEncode(AccountId());
+   string url=ApiBaseUrl+"/api/macrofx/positions-csv?account_id="+UrlEncode(AccountId());
    string resp="";
    int code=HttpRequest("POST",url,body,resp);
    if(code<200 || code>=300) Print("MacroFX positions HTTP ",code," ",resp);
@@ -145,7 +145,7 @@ void UploadBarsForSymbol(string canonical)
       int digits=(int)MarketInfo(symbol,MODE_DIGITS);
       body += TimeToString(t,TIME_DATE)+","+DoubleToString(c,digits)+"\n";
    }
-   string url=ApiBaseUrl+"/api/macrofx/bars-csv?api_key="+UrlEncode(ApiKey)+"&symbol="+canonical;
+   string url=ApiBaseUrl+"/api/macrofx/bars-csv?symbol="+canonical;
    string resp="";
    int code=HttpRequest("POST",url,body,resp);
    if(code<200 || code>=300) Print("MacroFX bars ",canonical," HTTP ",code," ",resp);
@@ -200,7 +200,7 @@ bool CloseTicket(int ticket)
 
 void SendFill(string canonical,string action,double lots,int ticket,double requested,double filled,string notes)
 {
-   string url=ApiBaseUrl+"/api/macrofx/fill?api_key="+UrlEncode(ApiKey)
+   string url=ApiBaseUrl+"/api/macrofx/fill
       +"&account_id="+UrlEncode(AccountId())
       +"&symbol="+canonical
       +"&action="+UrlEncode(action)
@@ -291,7 +291,7 @@ void ReconcileTargets(string targetsText)
 
 void PollTargets()
 {
-   string url=ApiBaseUrl+"/api/macrofx/targets-text?api_key="+UrlEncode(ApiKey)+"&account_id="+UrlEncode(AccountId());
+   string url=ApiBaseUrl+"/api/macrofx/targets-text?account_id="+UrlEncode(AccountId());
    string resp="";
    int code=HttpRequest("GET",url,"",resp);
    if(code==409)
