@@ -147,6 +147,9 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+from macrofx import router as macrofx_router
+app.include_router(macrofx_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
