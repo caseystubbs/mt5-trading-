@@ -15,7 +15,7 @@
 */
 
 input string ApiBaseUrl = "https://mt5.freedomincomeoptions.com";
-input string ApiKey = "";
+input string ApiKeyFile = "fio_macrofx.key";
 input bool DemoOnly = true;
 input bool EnableTrading = false;
 input int MagicNumber = 26092601;
@@ -28,7 +28,8 @@ input int BarRetryMinutes = 15;
 input int SlippagePoints = 30;
 input double MaxDrawdownPct = 10.0;
 
-string EA_VERSION = "MacroFX-MT4-Bridge-1.2";
+string EA_VERSION = "MacroFX-MT4-Bridge-1.3";
+string g_apiKey = "";
 datetime g_lastBarAttempt = 0;
 datetime g_lastBarUploadDay = 0;
 bool g_killed = false;
@@ -59,12 +60,39 @@ string AccountId()
    return IntegerToString(AccountNumber());
 }
 
+bool LoadApiKey()
+{
+   ResetLastError();
+
+   int handle=FileOpen(ApiKeyFile,FILE_READ|FILE_TXT|FILE_ANSI);
+   if(handle==INVALID_HANDLE)
+   {
+      Print("MacroFX key file not found: ",ApiKeyFile," err=",GetLastError());
+      return false;
+   }
+
+   string key=FileReadString(handle);
+   FileClose(handle);
+
+   key=StringTrimLeft(key);
+   key=StringTrimRight(key);
+
+   if(StringLen(key)<16)
+   {
+      Print("MacroFX key file is empty or invalid.");
+      return false;
+   }
+
+   g_apiKey=key;
+   return true;
+}
+
 int HttpRequest(string method,string url,string body,string &response)
 {
    char data[];
    char result[];
    string response_headers="";
-   string headers="Content-Type: text/plain\r\nX-EA-API-Key: "+ApiKey+"\r\n";
+   string headers="Content-Type: text/plain\r\nX-EA-API-Key: "+g_apiKey+"\r\n";
 
    int data_size=StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
    if(data_size>0) ArrayResize(data,data_size-1);
@@ -498,6 +526,12 @@ void PollTargets()
 
 int OnInit()
 {
+   if(!LoadApiKey())
+   {
+      Alert("MacroFX API key file missing or invalid. Put fio_macrofx.key in MQL4\\Files.");
+      return(INIT_FAILED);
+   }
+
    if(DemoOnly && !IsDemoAccount())
    {
       Alert("FIO MacroFX Bridge is DEMO ONLY. Attach it to a demo account.");
