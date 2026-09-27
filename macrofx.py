@@ -112,6 +112,8 @@ CREATE TABLE IF NOT EXISTS macrofx_reconciliation (
     status TEXT NOT NULL,
     details TEXT
 );
+ALTER TABLE macrofx_weekly_runs
+    ADD COLUMN IF NOT EXISTS available_pairs_json JSONB NOT NULL DEFAULT '[]'::jsonb;
 """
 
 def _verify(key: str):
@@ -237,7 +239,7 @@ async def fill(
     pnl: float = 0,
     swap: float = 0,
     commission: float = 0,
-    strategy_version: str = "macrofx-v1",
+    strategy_version: str = "macrofx-v1.1",
     notes: str = "",
     x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"),
 ):
@@ -361,10 +363,11 @@ async def run_weekly_analysis(force: bool = False):
             run_id = await conn.fetchval(
                 "INSERT INTO macrofx_weekly_runs("
                 "week_ending,strategy_version,strongest_currency,weakest_currency,"
-                "snapshot_json,targets_json,report_markdown) "
-                "VALUES($1,'macrofx-v1',$2,$3,$4::jsonb,$5::jsonb,$6) RETURNING id",
+                "snapshot_json,targets_json,report_markdown,available_pairs_json) "
+                "VALUES($1,'macrofx-v1.1',$2,$3,$4::jsonb,$5::jsonb,$6,$7::jsonb) RETURNING id",
                 week_ending, strongest, weakest,
-                json.dumps(snapshot_records), json.dumps(target_records), report
+                json.dumps(snapshot_records), json.dumps(target_records), report,
+                json.dumps(sorted(available))
             )
             await conn.execute("UPDATE macrofx_targets SET active=FALSE WHERE active=TRUE")
             for t in target_records:
@@ -407,27 +410,37 @@ async def targets_text(x_ea_api_key: str = Header(default="", alias="X-EA-API-Ke
             return PlainTextResponse("ERROR,LIVE_ACCOUNT_BLOCKED\n", status_code=409)
 
         latest_run = await conn.fetchrow(
-            "SELECT week_ending FROM macrofx_weekly_runs ORDER BY week_ending DESC LIMIT 1"
+            "SELECT week_ending, created_at, available_pairs_json "
+            "FROM macrofx_weekly_runs ORDER BY week_ending DESC LIMIT 1"
+        )
+        qualifying_rows = await conn.fetch(
+            "SELECT symbol FROM macrofx_daily_bars "
+            "GROUP BY symbol HAVING COUNT(*) >= 260 ORDER BY symbol"
         )
 
-    # Bootstrap the first weekly analysis automatically once data is present.
-    # run_weekly_analysis is idempotent for the current week.
-    if latest_run is None:
+    qualifying_pairs = sorted(str(r["symbol"]) for r in qualifying_rows)
+    stored_pairs = sorted((latest_run["available_pairs_json"] or [])) if latest_run else []
+    has_new_pair_history = bool(set(qualifying_pairs) - set(stored_pairs))
+
+    # Bootstrap once, and refresh once when newly supported broker pairs acquire enough history.
+    # This preserves weekly rebalancing while allowing a structural universe expansion to take effect.
+    if latest_run is None or has_new_pair_history:
         try:
-            boot = await run_weekly_analysis(force=False)
+            boot = await run_weekly_analysis(force=latest_run is not None)
             print(
-                "MACROFX_BOOTSTRAP_RESULT "
+                "MACROFX_UNIVERSE_REFRESH_RESULT "
                 + json.dumps({
                     "status": boot.get("status"),
                     "week_ending": boot.get("week_ending"),
                     "strongest": boot.get("strongest"),
                     "weakest": boot.get("weakest"),
                     "targets": boot.get("targets", []),
+                    "qualifying_pairs": qualifying_pairs,
                 }, default=str),
                 flush=True,
             )
         except Exception as exc:
-            print(f"MACROFX_BOOTSTRAP_ERROR {type(exc).__name__}: {exc}", flush=True)
+            print(f"MACROFX_UNIVERSE_REFRESH_ERROR {type(exc).__name__}: {exc}", flush=True)
 
     async with pool.acquire() as conn:
         rows = await conn.fetch(
@@ -437,7 +450,7 @@ async def targets_text(x_ea_api_key: str = Header(default="", alias="X-EA-API-Ke
 
     lines = [
         "MODE,DEMO_ONLY",
-        "STRATEGY,macrofx-v1",
+        "STRATEGY,macrofx-v1.1",
         "FLATTEN_UNLISTED,1",
         "MAX_POSITIONS,2",
         "MAX_LOT_PER_PAIR,0.01",
