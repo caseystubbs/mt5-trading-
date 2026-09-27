@@ -15,7 +15,7 @@
 */
 
 input string ApiBaseUrl = "https://mt5.freedomincomeoptions.com";
-input string ApiKeyFile = "fio_macrofx.key";
+input string ApiKey = "";
 input bool DemoOnly = true;
 input bool EnableTrading = false;
 input int MagicNumber = 26092601;
@@ -23,10 +23,13 @@ input double MaxLotPerPair = 0.01;
 input int MaxPositions = 2;
 input int PollSeconds = 60;
 input int DailyBarsToUpload = 320;
+input int BarsPerRequest = 50;
+input int BarRetryMinutes = 15;
 input int SlippagePoints = 30;
 input double MaxDrawdownPct = 10.0;
 
-string EA_VERSION = "MacroFX-MT4-Bridge-1.1";\nstring g_apiKey = "";
+string EA_VERSION = "MacroFX-MT4-Bridge-1.2";
+datetime g_lastBarAttempt = 0;
 datetime g_lastBarUploadDay = 0;
 bool g_killed = false;
 
@@ -67,7 +70,7 @@ int HttpRequest(string method,string url,string body,string &response)
    if(data_size>0) ArrayResize(data,data_size-1);
 
    ResetLastError();
-   int code=WebRequest(method,url,headers,5000,data,result,response_headers);
+   int code=WebRequest(method,url,headers,10000,data,result,response_headers);
    if(code==-1)
    {
       Print("MacroFX WebRequest error=",GetLastError()," url=",url);
@@ -146,31 +149,67 @@ string CanonicalSymbol(string brokerSymbol)
    return brokerSymbol;
 }
 
-void UploadBarsForSymbol(string canonical)
+bool PostBarChunk(string canonical,string body)
+{
+   string url=ApiBaseUrl+"/api/macrofx/bars-csv?symbol="+canonical;
+   string resp="";
+   int code=HttpRequest("POST",url,body,resp);
+   if(code<200 || code>=300)
+   {
+      Print("MacroFX bars ",canonical," HTTP ",code," ",resp);
+      return false;
+   }
+   return true;
+}
+
+bool UploadBarsForSymbol(string canonical)
 {
    string symbol=NormalizeBrokerSymbol(canonical);
-   if(MarketInfo(symbol,MODE_POINT)<=0) return;
+   if(MarketInfo(symbol,MODE_POINT)<=0)
+   {
+      Print("MacroFX bars ",canonical,": broker symbol not found.");
+      return false;
+   }
 
-   string body="date,close\n";
    int total=iBars(symbol,PERIOD_D1);
-   if(total<=2) return;
+   if(total<=2)
+   {
+      Print("MacroFX bars ",canonical,": daily history unavailable.");
+      return false;
+   }
 
-   int count=MathMin(DailyBarsToUpload,total-1);
+   int count=(int)MathMin(DailyBarsToUpload,total-1);
+   int chunkLimit=MathMax(10,BarsPerRequest);
+   string body="date,close\n";
+   int inChunk=0;
+   bool ok=true;
 
    for(int shift=count;shift>=1;shift--)
    {
       datetime t=iTime(symbol,PERIOD_D1,shift);
-      double c=iClose(symbol,PERIOD_D1,shift);
-      if(t<=0 || c<=0) continue;
+      double closePrice=iClose(symbol,PERIOD_D1,shift);
+      if(t<=0 || closePrice<=0) continue;
 
       int digits=(int)MarketInfo(symbol,MODE_DIGITS);
-      body += TimeToString(t,TIME_DATE)+","+DoubleToString(c,digits)+"\n";
+      string dateText=StringFormat("%04d-%02d-%02d",TimeYear(t),TimeMonth(t),TimeDay(t));
+      body += dateText+","+DoubleToString(closePrice,digits)+"\n";
+      inChunk++;
+
+      if(inChunk>=chunkLimit)
+      {
+         if(!PostBarChunk(canonical,body)) ok=false;
+         body="date,close\n";
+         inChunk=0;
+         Sleep(50);
+      }
    }
 
-   string url=ApiBaseUrl+"/api/macrofx/bars-csv?symbol="+canonical;
-   string resp="";
-   int code=HttpRequest("POST",url,body,resp);
-   if(code<200 || code>=300) Print("MacroFX bars ",canonical," HTTP ",code," ",resp);
+   if(inChunk>0)
+   {
+      if(!PostBarChunk(canonical,body)) ok=false;
+   }
+
+   return ok;
 }
 
 void UploadDailyBarsIfNeeded()
@@ -178,12 +217,28 @@ void UploadDailyBarsIfNeeded()
    datetime today=StringToTime(TimeToString(TimeCurrent(),TIME_DATE));
    if(g_lastBarUploadDay==today) return;
 
+   datetime now=TimeCurrent();
+   if(g_lastBarAttempt>0 && (now-g_lastBarAttempt)<BarRetryMinutes*60) return;
+   g_lastBarAttempt=now;
+
    string pairs[]={"EURUSD","GBPUSD","AUDUSD","NZDUSD","USDJPY","USDCAD","USDCHF",
                    "EURGBP","EURJPY","GBPJPY","AUDJPY","CADJPY","EURAUD","GBPAUD"};
 
-   for(int i=0;i<ArraySize(pairs);i++) UploadBarsForSymbol(pairs[i]);
+   bool allOk=true;
+   for(int i=0;i<ArraySize(pairs);i++)
+   {
+      if(!UploadBarsForSymbol(pairs[i])) allOk=false;
+   }
 
-   g_lastBarUploadDay=today;
+   if(allOk)
+   {
+      g_lastBarUploadDay=today;
+      Print("MacroFX daily bars upload complete.");
+   }
+   else
+   {
+      Print("MacroFX daily bars upload incomplete; retrying later.");
+   }
 }
 
 double TargetLotsFor(string canonical,string targetsText)
