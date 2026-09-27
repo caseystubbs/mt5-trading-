@@ -393,6 +393,8 @@ async def run_weekly(x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"
 async def targets_text(x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"), account_id: str = ""):
     _verify(x_ea_api_key)
     pool = await get_pool()
+
+    # Demo-account safety check first.
     async with pool.acquire() as conn:
         hb = (
             await conn.fetchrow(
@@ -403,6 +405,31 @@ async def targets_text(x_ea_api_key: str = Header(default="", alias="X-EA-API-Ke
         )
         if hb and not hb["is_demo"]:
             return PlainTextResponse("ERROR,LIVE_ACCOUNT_BLOCKED\n", status_code=409)
+
+        latest_run = await conn.fetchrow(
+            "SELECT week_ending FROM macrofx_weekly_runs ORDER BY week_ending DESC LIMIT 1"
+        )
+
+    # Bootstrap the first weekly analysis automatically once data is present.
+    # run_weekly_analysis is idempotent for the current week.
+    if latest_run is None:
+        try:
+            boot = await run_weekly_analysis(force=False)
+            print(
+                "MACROFX_BOOTSTRAP_RESULT "
+                + json.dumps({
+                    "status": boot.get("status"),
+                    "week_ending": boot.get("week_ending"),
+                    "strongest": boot.get("strongest"),
+                    "weakest": boot.get("weakest"),
+                    "targets": boot.get("targets", []),
+                }, default=str),
+                flush=True,
+            )
+        except Exception as exc:
+            print(f"MACROFX_BOOTSTRAP_ERROR {type(exc).__name__}: {exc}", flush=True)
+
+    async with pool.acquire() as conn:
         rows = await conn.fetch(
             "SELECT symbol,direction,lots,score,expires_at FROM macrofx_targets "
             "WHERE active=TRUE AND expires_at > NOW() ORDER BY ABS(score) DESC"
