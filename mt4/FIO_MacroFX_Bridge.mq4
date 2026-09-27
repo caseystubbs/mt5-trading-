@@ -15,7 +15,7 @@
 */
 
 input string ApiBaseUrl = "https://mt5.freedomincomeoptions.com";
-input string ApiKey = "";
+input string ApiKeyFile = "fio_macrofx.key";
 input bool DemoOnly = true;
 input bool EnableTrading = false;
 input int MagicNumber = 26092601;
@@ -26,7 +26,7 @@ input int DailyBarsToUpload = 320;
 input int SlippagePoints = 30;
 input double MaxDrawdownPct = 10.0;
 
-string EA_VERSION = "MacroFX-MT4-Bridge-1.0";
+string EA_VERSION = "MacroFX-MT4-Bridge-1.1";\nstring g_apiKey = "";
 datetime g_lastBarUploadDay = 0;
 bool g_killed = false;
 
