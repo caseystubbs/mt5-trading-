@@ -45,7 +45,7 @@ string UrlEncode(string s)
 
 bool IsDemoAccount()
 {
-   return AccountDemo();
+   return IsDemo();
 }
 
 string AccountId()
