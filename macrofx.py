@@ -290,7 +290,7 @@ async def run_weekly_analysis(force: bool = False):
     targets = choose_targets(snapshot, available, min_lot=0.01)
     strongest = str(snapshot.iloc[0]["currency"]) if not snapshot.empty else None
     weakest = str(snapshot.iloc[-1]["currency"]) if not snapshot.empty else None
-    snapshot_records = snapshot.where(pd.notnull(snapshot), None).to_dict(orient="records")
+    snapshot_records = json.loads(snapshot.to_json(orient="records"))
     target_records = [t.__dict__ for t in targets]
 
     lines = [
