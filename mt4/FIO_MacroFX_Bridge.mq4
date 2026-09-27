@@ -25,7 +25,7 @@ input int DailyBarsToUpload = 320;
 input int SlippagePoints = 30;
 
 string EA_VERSION = "MacroFX-MT4-Bridge-1.0";
-datetime g_lastBarUploadDay = 0;
+datetime g_lastBarUploadDay = 0;\nbool g_killed = false;
 
 string UrlEncode(string s)
 {
