@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 import asyncpg
 import pandas as pd
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Header
 from fastapi.responses import PlainTextResponse
 
 from macrofx_engine import build_snapshot, choose_targets, performance_metrics
@@ -151,7 +151,7 @@ async def macrofx_health():
 
 @router.post("/heartbeat")
 async def heartbeat(
-    api_key: str,
+    x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"),
     account_id: str,
     balance: float = 0,
     equity: float = 0,
@@ -160,7 +160,7 @@ async def heartbeat(
     ea_version: str = "",
     broker: str = "MidasFX",
 ):
-    _verify(api_key)
+    _verify(x_ea_api_key)
     if not is_demo:
         raise HTTPException(status_code=409, detail="MacroFX bridge is demo-only in v1")
     pool = await get_pool()
@@ -173,8 +173,8 @@ async def heartbeat(
     return {"status":"ok"}
 
 @router.post("/positions-csv")
-async def positions_csv(api_key: str, account_id: str, body: str = Body(default="", media_type="text/plain")):
-    _verify(api_key)
+async def positions_csv(x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"), account_id: str, body: str = Body(default="", media_type="text/plain")):
+    _verify(x_ea_api_key)
     pool = await get_pool()
     rows = []
     for line in body.splitlines():
@@ -195,8 +195,8 @@ async def positions_csv(api_key: str, account_id: str, body: str = Body(default=
     return {"status":"ok","rows":len(rows)}
 
 @router.post("/bars-csv")
-async def bars_csv(api_key: str, symbol: str, body: str = Body(default="", media_type="text/plain")):
-    _verify(api_key)
+async def bars_csv(x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"), symbol: str, body: str = Body(default="", media_type="text/plain")):
+    _verify(x_ea_api_key)
     symbol = symbol.upper()
     pool = await get_pool()
     inserted = 0
@@ -225,7 +225,7 @@ async def bars_csv(api_key: str, symbol: str, body: str = Body(default="", media
 
 @router.post("/fill")
 async def fill(
-    api_key: str,
+    x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"),
     account_id: str,
     symbol: str,
     action: str,
@@ -241,7 +241,7 @@ async def fill(
     strategy_version: str = "macrofx-v1",
     notes: str = "",
 ):
-    _verify(api_key)
+    _verify(x_ea_api_key)
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute(
@@ -385,13 +385,13 @@ async def run_weekly_analysis(force: bool = False):
     }
 
 @router.post("/run-weekly")
-async def run_weekly(api_key: str, force: bool = False):
-    _verify(api_key)
+async def run_weekly(x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"), force: bool = False):
+    _verify(x_ea_api_key)
     return await run_weekly_analysis(force=force)
 
 @router.get("/targets-text", response_class=PlainTextResponse)
-async def targets_text(api_key: str, account_id: str = ""):
-    _verify(api_key)
+async def targets_text(x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"), account_id: str = ""):
+    _verify(x_ea_api_key)
     pool = await get_pool()
     async with pool.acquire() as conn:
         hb = (
