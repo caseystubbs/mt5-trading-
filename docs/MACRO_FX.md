@@ -51,3 +51,46 @@ Friday after the trading week:
 
 ## Important
 The weekly report is a feedback loop, not an automatic optimization loop. Strategy parameter changes must be versioned and retested rather than changed because of a single weak week.
+
+
+## Feedback analytics layer
+
+The feedback layer records and reviews:
+- trade-by-trade MAE and MFE from MT4 position snapshots
+- entry and exit price
+- entry spread and slippage
+- realized P&L, swap and commission
+- holding time
+- explicit exit reason
+- signal score at entry and current/exit signal score
+- a proper daily equity curve using daily open/high/low/close equity
+- daily-close drawdown
+- weekly review snapshots stored in `macrofx_feedback_reviews`
+
+The weekly report appends the feedback review after the model run. Strategy rules are not changed automatically.
+
+### Weekly feedback meeting
+
+Cadence:
+- Friday close: complete the weekly market-data sample.
+- Friday night: Railway runs the MacroFX model and writes the next target set plus feedback snapshot.
+- Saturday morning: review the report before the Sunday FX reopen.
+- Sunday reopen: MT4 reconciles the demo portfolio to the approved model target set automatically.
+
+Meeting agenda:
+1. Operations health: connectivity, rejected orders, duplicate positions, target/position mismatch.
+2. Portfolio results: open/closed P&L, daily equity curve, drawdown, costs.
+3. Trade review: entry score vs current/exit score, MAE, MFE, holding time, exit reason.
+4. Execution quality: spread, slippage, swap and commission.
+5. Research observations: score/outcome relationship, MFE giveback, MAE clustering, pair-specific drag.
+6. Decision: HOLD CURRENT MODEL or create a research hypothesis.
+7. Any proposed rule change must be versioned and tested out-of-sample before deployment.
+
+### MT4 bridge v1.5
+
+Bridge v1.5 adds:
+- signal score on each fill
+- entry spread and slippage
+- close P&L, swap and commission
+- explicit exit reasons: `target_removed`, `signal_reversed`, or `drawdown_kill`
+- fill reporting for drawdown-kill exits
