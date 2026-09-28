@@ -347,8 +347,8 @@ async def build_feedback_snapshot(pool, account_id: Optional[str] = None, days: 
         f"- Weakest currency: {latest.get('weakest_currency') or 'N/A'}",
         f"- Open trades: {len(open_trades)}",
         f"- Closed trades in review window: {len(closed_trades)}",
-        f"- Closed net P&L: $${net_closed:,.2f}",
-        f"- Total observed swap + commission: $${summary['total_costs']:,.2f}",
+        f"- Closed net P&L: ${net_closed:,.2f}",
+        f"- Total observed swap + commission: ${summary['total_costs']:,.2f}",
         f"- Daily-close max drawdown: {max_dd:.2%}",
         "",
         "## Trade review",
@@ -363,7 +363,7 @@ async def build_feedback_snapshot(pool, account_id: Optional[str] = None, days: 
             xs = "N/A" if t["exit_signal_score"] is None else f"{t['exit_signal_score']:+.3f}"
             lines.append(
                 f"| {t['symbol']} | {t['direction']} | {t['status']} | {es} | {xs} | "
-                f"$${t['net_pnl']:+.2f} | $${t['mae_net']:+.2f} | $${t['mfe_net']:+.2f} | "
+                f"${t['net_pnl']:+.2f} | ${t['mae_net']:+.2f} | ${t['mfe_net']:+.2f} | "
                 f"{t['holding_hours']:.1f} | {t['exit_reason'] or '—'} |"
             )
     else:
