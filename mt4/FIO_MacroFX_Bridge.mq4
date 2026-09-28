@@ -28,7 +28,7 @@ input int BarRetryMinutes = 15;
 input int SlippagePoints = 30;
 input double MaxDrawdownPct = 10.0;
 
-string EA_VERSION = "MacroFX-MT4-Bridge-1.4";
+string EA_VERSION = "MacroFX-MT4-Bridge-1.5";
 string g_apiKey = "";
 datetime g_lastBarAttempt = 0;
 datetime g_lastBarUploadDay = 0;
@@ -297,6 +297,24 @@ double TargetLotsFor(string canonical,string targetsText)
    return 0.0;
 }
 
+double TargetScoreFor(string canonical,string targetsText)
+{
+   string lines[];
+   int n=StringSplit(targetsText,'\n',lines);
+
+   for(int i=0;i<n;i++)
+   {
+      if(StringFind(lines[i],"TARGET,",0)!=0) continue;
+
+      string parts[];
+      int m=StringSplit(lines[i],',',parts);
+
+      if(m>=4 && parts[1]==canonical)
+         return StringToDouble(parts[3]);
+   }
+   return 0.0;
+}
+
 int BridgeOpenPositions()
 {
    int n=0;
@@ -310,22 +328,22 @@ int BridgeOpenPositions()
    return n;
 }
 
-bool CloseTicket(int ticket)
-{
-   if(!OrderSelect(ticket,SELECT_BY_TICKET)) return false;
-
-   string sym=OrderSymbol();
-   int type=OrderType();
-   double lots=OrderLots();
-   double price=(type==OP_BUY?MarketInfo(sym,MODE_BID):MarketInfo(sym,MODE_ASK));
-
-   bool ok=OrderClose(ticket,lots,price,SlippagePoints,clrNONE);
-   if(!ok) Print("MacroFX close failed ticket=",ticket," err=",GetLastError());
-
-   return ok;
-}
-
-void SendFill(string canonical,string action,double lots,int ticket,double requested,double filled,string notes)
+void SendFill(
+   string canonical,
+   string action,
+   double lots,
+   int ticket,
+   double requested,
+   double filled,
+   double spreadPoints,
+   double slippagePoints,
+   double pnl,
+   double swap,
+   double commission,
+   double signalScore,
+   string exitReason,
+   string notes
+)
 {
    string url=ApiBaseUrl+"/api/macrofx/fill"
       +"?account_id="+UrlEncode(AccountId())
@@ -335,12 +353,74 @@ void SendFill(string canonical,string action,double lots,int ticket,double reque
       +"&ticket="+IntegerToString(ticket)
       +"&requested_price="+DoubleToString(requested,8)
       +"&fill_price="+DoubleToString(filled,8)
+      +"&spread_points="+DoubleToString(spreadPoints,3)
+      +"&slippage_points="+DoubleToString(slippagePoints,3)
+      +"&pnl="+DoubleToString(pnl,2)
+      +"&swap="+DoubleToString(swap,2)
+      +"&commission="+DoubleToString(commission,2)
+      +"&signal_score="+DoubleToString(signalScore,8)
+      +"&exit_reason="+UrlEncode(exitReason)
       +"&strategy_version=macrofx-v1.1"
       +"&notes="+UrlEncode(notes);
 
    string resp="";
    int code=HttpRequest("POST",url,"",resp);
    if(code<200 || code>=300) Print("MacroFX fill HTTP ",code," ",resp);
+}
+
+bool CloseTicket(int ticket,string canonical,string reason,double signalScore)
+{
+   if(!OrderSelect(ticket,SELECT_BY_TICKET)) return false;
+
+   string sym=OrderSymbol();
+   int type=OrderType();
+   double lots=OrderLots();
+   double pnl=OrderProfit();
+   double swap=OrderSwap();
+   double commission=OrderCommission();
+
+   double bid=MarketInfo(sym,MODE_BID);
+   double ask=MarketInfo(sym,MODE_ASK);
+   double point=MarketInfo(sym,MODE_POINT);
+   double requested=(type==OP_BUY?bid:ask);
+   double spreadPoints=(point>0?(ask-bid)/point:0.0);
+
+   bool ok=OrderClose(ticket,lots,requested,SlippagePoints,clrNONE);
+   if(!ok)
+   {
+      Print("MacroFX close failed ticket=",ticket," err=",GetLastError());
+      return false;
+   }
+
+   double filled=requested;
+   if(OrderSelect(ticket,SELECT_BY_TICKET,MODE_HISTORY))
+   {
+      filled=OrderClosePrice();
+      pnl=OrderProfit();
+      swap=OrderSwap();
+      commission=OrderCommission();
+   }
+
+   double slippagePoints=(point>0?MathAbs(filled-requested)/point:0.0);
+
+   SendFill(
+      canonical,
+      "CLOSE",
+      lots,
+      ticket,
+      requested,
+      filled,
+      spreadPoints,
+      slippagePoints,
+      pnl,
+      swap,
+      commission,
+      signalScore,
+      reason,
+      reason
+   );
+
+   return true;
 }
 
 string HwmKey()
@@ -383,7 +463,8 @@ bool DrawdownKillTriggered()
       if(!OrderSelect(i,SELECT_BY_POS,MODE_TRADES)) continue;
       if(OrderMagicNumber()!=MagicNumber) continue;
       if(OrderType()!=OP_BUY && OrderType()!=OP_SELL) continue;
-      CloseTicket(OrderTicket());
+      string canonical=CanonicalSymbol(OrderSymbol());
+      CloseTicket(OrderTicket(),canonical,"drawdown_kill",0.0);
    }
 
    return true;
@@ -414,11 +495,9 @@ void ReconcileTargets(string targetsText)
       if(target==0.0 || (target>0 && actual<0) || (target<0 && actual>0))
       {
          int ticket=OrderTicket();
-         double lots=OrderLots();
-         double req=(OrderType()==OP_BUY?MarketInfo(OrderSymbol(),MODE_BID):MarketInfo(OrderSymbol(),MODE_ASK));
-
-         if(CloseTicket(ticket))
-            SendFill(canonical,"CLOSE",lots,ticket,req,req,"reconciliation");
+         double signalScore=TargetScoreFor(canonical,targetsText);
+         string reason=(target==0.0?"target_removed":"signal_reversed");
+         CloseTicket(ticket,canonical,reason,signalScore);
       }
    }
 
@@ -476,7 +555,12 @@ void ReconcileTargets(string targetsText)
       if(lotStep>0)
          lots=MathFloor(lots/lotStep+0.0000001)*lotStep;
 
-      double req=(cmd==OP_BUY?MarketInfo(sym,MODE_ASK):MarketInfo(sym,MODE_BID));
+      double ask=MarketInfo(sym,MODE_ASK);
+      double bid=MarketInfo(sym,MODE_BID);
+      double point=MarketInfo(sym,MODE_POINT);
+      double req=(cmd==OP_BUY?ask:bid);
+      double spreadPoints=(point>0?(ask-bid)/point:0.0);
+      double signalScore=StringToDouble(p[3]);
 
       ResetLastError();
 
@@ -501,15 +585,27 @@ void ReconcileTargets(string targetsText)
       }
 
       if(OrderSelect(ticket,SELECT_BY_TICKET))
+      {
+         double filled=OrderOpenPrice();
+         double slippagePoints=(point>0?MathAbs(filled-req)/point:0.0);
+
          SendFill(
             canonical,
             (cmd==OP_BUY?"OPEN_LONG":"OPEN_SHORT"),
             lots,
             ticket,
             req,
-            OrderOpenPrice(),
-            "target_reconciliation"
+            filled,
+            spreadPoints,
+            slippagePoints,
+            0.0,
+            0.0,
+            OrderCommission(),
+            signalScore,
+            "",
+            "target_open"
          );
+      }
    }
 }
 
