@@ -11,7 +11,7 @@ import pandas as pd
 from fastapi import APIRouter, HTTPException, Body, Header
 from fastapi.responses import PlainTextResponse
 
-from macrofx_engine import build_snapshot, choose_targets, performance_metrics
+from macrofx_engine import build_snapshot, choose_targets
 from macrofx_feedback import (
     ensure_feedback_schema,
     upsert_daily_equity,
@@ -333,20 +333,16 @@ async def run_weekly_analysis(force: bool = False):
         lines.append("- No pair passed the current macro-divergence gate.")
 
     async with pool.acquire() as conn:
-        eqrows = await conn.fetch(
-            "SELECT captured_at, equity FROM macrofx_heartbeats WHERE equity > 0 ORDER BY captured_at"
+        latest_equity = await conn.fetchrow(
+            "SELECT equity,balance,free_margin,captured_at "
+            "FROM macrofx_heartbeats WHERE equity > 0 ORDER BY captured_at DESC LIMIT 1"
         )
 
-    perf = performance_metrics(pd.DataFrame([dict(r) for r in eqrows])) if eqrows else {}
     lines += ["", "## Broker-demo feedback", ""]
-    if perf:
-        lines.append(f"- Ending equity: USD {perf.get('ending_equity',0):,.2f}")
-        if "total_return" in perf:
-            lines.append(f"- Demo return: {perf['total_return']:.2%}")
-        if "max_drawdown" in perf:
-            lines.append(f"- Max drawdown: {perf['max_drawdown']:.2%}")
-        if "sharpe" in perf and pd.notna(perf["sharpe"]):
-            lines.append(f"- Snapshot Sharpe: {perf['sharpe']:.2f}")
+    if latest_equity:
+        lines.append(f"- Latest equity: USD {float(latest_equity['equity']):,.2f}")
+        lines.append(f"- Latest balance: USD {float(latest_equity['balance'] or 0):,.2f}")
+        lines.append("- Detailed MAE/MFE, costs, holding time, exit reasons and daily-close drawdown are appended below.")
     else:
         lines.append("- Not enough demo-equity history yet.")
 
