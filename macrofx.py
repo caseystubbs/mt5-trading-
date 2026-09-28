@@ -12,6 +12,12 @@ from fastapi import APIRouter, HTTPException, Body, Header
 from fastapi.responses import PlainTextResponse
 
 from macrofx_engine import build_snapshot, choose_targets, performance_metrics
+from macrofx_feedback import (
+    ensure_feedback_schema,
+    upsert_daily_equity,
+    build_feedback_snapshot,
+    save_feedback_review,
+)
 
 router = APIRouter(prefix="/api/macrofx", tags=["macrofx"])
 
@@ -128,6 +134,7 @@ async def get_pool() -> asyncpg.Pool:
         _macro_pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=4)
         async with _macro_pool.acquire() as conn:
             await conn.execute(SCHEMA_SQL)
+            await ensure_feedback_schema(conn)
     return _macro_pool
 
 def _num(v, default=0.0):
@@ -172,6 +179,7 @@ async def heartbeat(
             "VALUES($1,$2,$3,$4,$5,$6,$7)",
             account_id, balance, equity, free_margin, is_demo, ea_version, broker
         )
+        await upsert_daily_equity(conn, account_id, balance, equity, free_margin)
     return {"status":"ok"}
 
 @router.post("/positions-csv")
@@ -239,6 +247,8 @@ async def fill(
     pnl: float = 0,
     swap: float = 0,
     commission: float = 0,
+    signal_score: float = 0,
+    exit_reason: str = "",
     strategy_version: str = "macrofx-v1.1",
     notes: str = "",
     x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"),
@@ -248,10 +258,11 @@ async def fill(
     async with pool.acquire() as conn:
         await conn.execute(
             "INSERT INTO macrofx_fills(account_id,symbol,ticket,action,lots,requested_price,fill_price,"
-            "spread_points,slippage_points,pnl,swap,commission,strategy_version,notes) "
-            "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)",
+            "spread_points,slippage_points,pnl,swap,commission,signal_score,exit_reason,strategy_version,notes) "
+            "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)",
             account_id, symbol, ticket, action, lots, requested_price, fill_price,
-            spread_points, slippage_points, pnl, swap, commission, strategy_version, notes
+            spread_points, slippage_points, pnl, swap, commission, signal_score,
+            exit_reason, strategy_version, notes
         )
     return {"status":"ok"}
 
@@ -377,6 +388,26 @@ async def run_weekly_analysis(force: bool = False):
                     run_id, expires, t["symbol"], t["direction"], t["lots"], t["score"], t["reason"]
                 )
 
+    feedback = await build_feedback_snapshot(pool)
+    await save_feedback_review(pool, week_ending, feedback)
+
+    combined_report = report + "\n\n---\n\n" + feedback["report_markdown"]
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE macrofx_weekly_runs SET report_markdown=$1 WHERE id=$2",
+            combined_report, run_id
+        )
+
+    print(
+        "MACROFX_FEEDBACK_REPORT "
+        + json.dumps({
+            "week_ending": str(week_ending),
+            "summary": feedback.get("summary", {}),
+            "trades": feedback.get("trades", []),
+        }, default=str),
+        flush=True,
+    )
+
     return {
         "status":"ok",
         "week_ending":str(week_ending),
@@ -384,7 +415,8 @@ async def run_weekly_analysis(force: bool = False):
         "strongest":strongest,
         "weakest":weakest,
         "targets":target_records,
-        "report_markdown":report,
+        "feedback": feedback,
+        "report_markdown":combined_report,
     }
 
 @router.post("/run-weekly")
@@ -481,6 +513,37 @@ async def weekly_report():
     if not row:
         raise HTTPException(status_code=404, detail="No weekly MacroFX report yet")
     return dict(row)
+
+@router.get("/feedback-report")
+async def feedback_report(
+    x_ea_api_key: str = Header(default="", alias="X-EA-API-Key"),
+    live: bool = False,
+):
+    _verify(x_ea_api_key)
+    pool = await get_pool()
+
+    if live:
+        return await build_feedback_snapshot(pool)
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT week_ending,created_at,account_id,strategy_version,metrics_json,report_markdown "
+            "FROM macrofx_feedback_reviews ORDER BY week_ending DESC LIMIT 1"
+        )
+
+    if not row:
+        return await build_feedback_snapshot(pool)
+
+    result = dict(row)
+    metrics = result.get("metrics_json")
+    if isinstance(metrics, str):
+        try:
+            metrics = json.loads(metrics)
+        except Exception:
+            metrics = {}
+    result["metrics"] = metrics
+    result.pop("metrics_json", None)
+    return result
 
 @router.get("/status")
 async def status():
