@@ -1,5 +1,15 @@
 # EST Liquidity Breakout EA — Development Log
 
+## 2026-10-08 — Permanent evidence-based agent reporting instructions
+
+**Agent:** Adaptive
+**Model:** openrouter/openai/gpt-6.1-sol
+**Files changed:** AGENTS.md, DEV_LOG.md, changelog.md.
+**Work completed:** Saved Casey's ten permanent reporting rules in AGENTS.md, including both source logs, actual agent/model separation, commit/PR and verification evidence, truthful deployment status, preserved continuity, and independent Roadmap task statuses.
+**Verification:** Read existing logs and recent history; reviewed the documentation diff and `git diff --check`. No runtime code changed or application tests rerun. No recent historical backfill was supported by the review.
+**Commit/PR:** This documentation changeset, based on 0613985.
+**Deployment:** No deployment command executed; automatic deployment from a documentation push is unverified. No trading/risk setting, runtime code, or Roadmap change.
+
 ## System overview
 
 Automated S&P 500 breakout trading system that trades liquidity sweeps at key intraday levels.

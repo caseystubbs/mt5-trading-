@@ -1,3 +1,14 @@
+## 2026-10-08
+
+### [docs] Persist evidence-based agent reporting rules
+Saved the permanent reporting contract in AGENTS.md, including both source logs, actual agent/model attribution, commit/PR and verification evidence, truthful deployment status, unique backfills, and independent Roadmap task statuses.
+**Agent:** Adaptive
+**Model:** openrouter/openai/gpt-6.1-sol
+**Files:** AGENTS.md, DEV_LOG.md, changelog.md.
+**Verification:** Documentation diff reviewed; `git diff --check` passed. No speculative historical backfill.
+**Commit/PR:** This documentation changeset, based on 0613985.
+**Status:** Documentation complete; no deployment command executed. Automatic deployment from a documentation push is unverified. No trading operation.
+
 ## 2026-04-15
 
 ### [fix] ea_version VARCHAR(10) → VARCHAR(100) in trade_events and daily_summaries
