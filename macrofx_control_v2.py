@@ -147,9 +147,9 @@ async def control_text(account_id: str, x_ea_api_key: str = Header(default="",al
         return "\n".join(lines)+"\n"
 
 @router.post("/ack")
-async def acknowledge(body: CommandAck, x_ea_api_key: str = Header(default="",alias="X-EA-API-Key")):
+async def acknowledge(account_id: str, command_id: uuid.UUID, status: str, result: str = "", x_ea_api_key: str = Header(default="",alias="X-EA-API-Key")):
     _verify(x_ea_api_key)
-    if body.status not in ("ACKED","FAILED"):
+    if status not in ("ACKED","FAILED"):
         raise HTTPException(422,"Invalid acknowledgement")
     pool=await database()
     async with pool.acquire() as conn:
@@ -157,7 +157,7 @@ async def acknowledge(body: CommandAck, x_ea_api_key: str = Header(default="",al
         updated=await conn.fetchval("""
           UPDATE macrofx_v2_commands SET status=$3,result=$4,acknowledged_at=NOW()
           WHERE command_id=$1 AND account_id=$2 AND status='PENDING' AND expires_at>NOW()
-          RETURNING command_id""",body.command_id,body.account_id,body.status,body.result[:1000])
+          RETURNING command_id""",command_id,account_id,status,result[:1000])
     if not updated:
         raise HTTPException(409,"Command already handled or expired")
     return {"status":"ok"}
