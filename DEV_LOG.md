@@ -1,5 +1,16 @@
 # EST Liquidity Breakout EA — Development Log
 
+## 2026-10-12 — MacroFX Bridge v2 development
+
+**Agent:** ChatGPT (GPT-6)
+**Status:** IN PROGRESS; not merged or deployed.
+**Files:** `macrofx_control_v2.py`, `main.py`, `changelog.md`, `DEV_LOG.md`.
+**Completed:** Added demo-only Railway control endpoints, disabled-by-default remote settings, expiring manual command queue, acknowledgements, and separate administrator authentication. Registered router in the FastAPI application.
+**Commits:** `95f9a28`, `2e3648d`, `28899fc`; draft PR #2: https://github.com/caseystubbs/mt5-trading-/pull/2.
+**Verification:** Repository source reviewed; GitHub commits confirmed. No automated integration tests, MT4 compilation, broker validation or deployment performed.
+**Outstanding:** MT4 v2 execution agent, crash-safe deduplication, manual override precedence, integration tests, demo validation and deployment checklist.
+**Trading:** Existing weekly strategy, EA v1.5 and production settings unchanged.
+
 ## 2026-10-08 — Permanent evidence-based agent reporting instructions
 
 **Agent:** Adaptive
