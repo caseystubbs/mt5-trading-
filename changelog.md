@@ -1,3 +1,14 @@
+## 2026-10-12
+
+### [wip] MacroFX Bridge v2 Railway control foundation
+
+**Agent:** ChatGPT (GPT-6)
+**Changes:** Added `macrofx_control_v2.py` and registered its router in `main.py` on the development branch. The new API provides demo-only remote settings, an expiring command queue, acknowledgements and a separate admin key. Existing MT4 v1.5 and strategy rules were not modified.
+**Evidence:** Commits `95f9a28` and `2e3648d`; draft PR #2.
+**Verification:** GitHub commits verified; no automated tests, MetaEditor compilation or demo execution yet.
+**Deployment:** Not merged or deployed. No broker orders or production configuration changes.
+**Remaining:** MT4 v2 client, deduplication, override reconciliation, tests and demo validation.
+
 ## 2026-10-08
 
 ### [docs] Persist evidence-based agent reporting rules
