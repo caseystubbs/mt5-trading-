@@ -818,5 +818,7 @@ void OnTimer()
    SendPositions();
    UploadDailyBarsIfNeeded();
    PollRemoteControl();
-   PollTargets();
+   // v2 remote commands are authoritative. Do not auto-reconcile weekly targets
+   // here: that could immediately reopen a manually closed position.
+   // Weekly target execution requires an explicit v2 reconciliation protocol.
 }
