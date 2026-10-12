@@ -1,3 +1,7 @@
+## 2026-10-12 — MacroFX MT4 Bridge v2 source
+
+**Agent:** ChatGPT (GPT-6). Added `mt4/FIO_MacroFX_Bridge_v2.mq4` with Railway v2 polling, remote open/close/pause command handling, hard demo/local risk checks, persistent pre-execution deduplication marker and authenticated command acknowledgement. Adapted `macrofx_control_v2.py` acknowledgement endpoint for MT4 query parameters. Disabled v2 weekly auto-reconciliation pending explicit override semantics so remote closes are not immediately undone. Commits `4c0f555`, `6e135a6`, `43106dc`. **Not compiled, tested, merged or deployed.** Manual review required for uncertain command outcomes. Existing EA v1.5 remains untouched.
+
 ## 2026-10-12
 
 ### [wip] MacroFX Bridge v2 Railway control foundation
