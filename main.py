@@ -150,6 +150,9 @@ app = FastAPI(
 from macrofx import router as macrofx_router
 app.include_router(macrofx_router)
 
+from macrofx_control_v2 import router as macrofx_control_v2_router
+app.include_router(macrofx_control_v2_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
