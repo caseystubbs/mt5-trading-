@@ -1,5 +1,15 @@
 # EST Liquidity Breakout EA — Development Log
 
+## 2026-10-12 — MacroFX Bridge v2 EA implementation
+
+**Agent:** ChatGPT (GPT-6)
+**Files:** `mt4/FIO_MacroFX_Bridge_v2.mq4`, `macrofx_control_v2.py`, `DEV_LOG.md`, `changelog.md`.
+**Implemented:** Separate v2 MT4 source with Railway remote settings/commands, broker execution and fill reporting, hard demo and local risk limits, durable marker written before each command attempt, and MT4-compatible acknowledgement endpoint. v2 weekly target reconciliation disabled pending manual-override precedence design.
+**Evidence:** GitHub commits `4c0f555`, `6e135a6`, `43106dc`; draft PR #2.
+**Verification:** Source committed; no MetaEditor compile, integration tests or demo broker verification. Duplicate safety is fail-closed but uncertain broker outcomes need manual review.
+**Deployment:** None. Production v1.5 unchanged.
+**Status:** IN PROGRESS — not production-ready.
+
 ## 2026-10-12 — MacroFX Bridge v2 development
 
 **Agent:** ChatGPT (GPT-6)
