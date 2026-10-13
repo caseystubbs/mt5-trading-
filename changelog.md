@@ -233,3 +233,7 @@ S&P 500 breakout trading system. Trades PDH/PDL, premarket, and opening range le
 ### [fix] Symbol initialization for demo brokers
 
 SymbolSelect fails on some demo accounts. EA now validates via bid price check instead of blocking on init failure.
+
+## 2026-10-13 — MacroFX v2 backend safety improvements (deployment requested)
+
+**Agent:** ChatGPT (GPT-6). Added atomic server-side command claiming before MT4 broker actions; retained fail-closed/no-retry behavior. Added complete latest position snapshots and authenticated, read-only weekly target reconciliation preview. Changes are on draft feature branch; Railway Dashboard deployment requested. No weekly execution scheduler or automatic trading enabled; MT4 source must be compiled and installed separately. Unrelated Railway staged changes are intentionally excluded.
