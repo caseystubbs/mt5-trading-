@@ -583,3 +583,11 @@ Levels serve two distinct purposes:
 9. **Volatility filter** — skip low-ATR days where breakouts fail more often
 10. **GitHub auto-push** — nightly script pushes journals + daily logs to repo
 11. **Improve stop logic** — consider ATR-based stops or level-based stops instead of candle low
+
+### 2026-10-13 — MacroFX v2 weekly-execution safety audit (not enabled)
+
+**Agent:** ChatGPT
+**Verified:** Railway Dashboard v2 commit dfbf76d deployed SUCCESS; MT4 demo heartbeats, position uploads and v2 control polls returned HTTP 200 repeatedly through 14:34 UTC. MacroFX Weekly service remains on main and the 2026-10-09 scheduled run produced SHORT EURAUD and SHORT NZDUSD at 0.01 lot each.
+**Execution evidence limit:** HTTP 200 on positions-csv confirms uploads, NOT the individual live broker positions; latest account position rows and broker tickets were not independently read. No v2 /fill requests appeared in the checked recent HTTP window.
+**Blocking defects:** (1) MT4 v2 OnTimer intentionally does not call PollTargets, so Friday signals do not currently drive Sunday execution; (2) multiple MT4 chart instances poll the same pending commands, while GlobalVariableCheck followed by GlobalVariableSet is not atomic; (3) remote settings remain disabled/paused, and no admin key is configured on the Dashboard; (4) changed MT4 source requires local MetaEditor compilation and demo broker tests before use.
+**Decision:** Keep remote execution disabled; do not claim completed weekly reconciliation, command execution, or end-to-end validation. Implement server-side single-consumer command claiming and durable target-to-command reconciliation with manual-close precedence; verify actual positions and broker fills, then perform demo-only pause/open/close/restart tests. Do not change weekly signal logic or 2-position/0.01-lot caps.
