@@ -566,8 +566,8 @@ void ReconcileTargets(string targetsText)
       double bid=MarketInfo(sym,MODE_BID);
       double point=MarketInfo(sym,MODE_POINT);
       double req=(cmd==OP_BUY?ask:bid);
-      if(point<=0 || spreadPoints>g_remoteMaxSpread || req<=0) continue;
       double spreadPoints=(point>0?(ask-bid)/point:0.0);
+      if(point<=0 || spreadPoints>g_remoteMaxSpread || req<=0) continue;
       double signalScore=StringToDouble(p[3]);
 
       ResetLastError();
