@@ -613,3 +613,7 @@ Levels serve two distinct purposes:
 ### 2026-10-13 — Production hotfix verified
 
 **Agent:** ChatGPT (GPT-6). Railway Dashboard deployment `2b6e52f6-78be-4965-92f3-3b7499d2a100` (commit `a16ac2fdaf666417b6c4e6314e6ada3be896c651`) reported SUCCESS at 15:09:14 UTC. HTTP logs after rollout through 15:13:13 UTC show repeated 200 responses for `/api/macrofx/heartbeat`, `/api/macrofx/positions-csv`, and `/api/macrofx/v2/control-text`. Earlier 500 errors occurred before rollout. SQL migration outage resolved. This verifies connectivity, not broker execution; remote trading remains disabled pending EA compilation and demo trade tests.
+
+### 2026-10-13 — MT4 EA visible version label
+
+**Agent:** ChatGPT (GPT-6). Added MQL4 `#property version "2.0"` and About-tab description to `mt4/FIO_MacroFX_Bridge_v2.mq4` (commit `d72faee`). Created a version-labeled copy `mt4/FIO_MacroFX_Bridge_v2_0.mq4` (commit `de586fe`) so the EA filename itself displays v2_0 in the MT4 expert properties title. Not compiled or installed; no backend redeployment and no trading actions.
