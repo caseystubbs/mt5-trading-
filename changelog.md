@@ -239,3 +239,7 @@ SymbolSelect fails on some demo accounts. EA now validates via bid price check i
 **Agent:** ChatGPT (GPT-6). Added atomic server-side command claiming before MT4 broker actions; retained fail-closed/no-retry behavior. Added complete latest position snapshots and authenticated, read-only weekly target reconciliation preview. Changes are on draft feature branch; Railway Dashboard deployment requested. No weekly execution scheduler or automatic trading enabled; MT4 source must be compiled and installed separately. Unrelated Railway staged changes are intentionally excluded.
 
 **Deployment tracking:** Railway Dashboard deployment `3d473bbe-8eeb-41ec-8e27-7012b9f5f246` triggered for `5f6bca4`; BUILDING at last check, pending verification. The existing MT4 EA and automatic trading remain unchanged.
+
+## 2026-10-13 — MacroFX v2 production migration hotfix
+
+**Agent:** ChatGPT (GPT-6). Fixed invalid PostgreSQL anonymous block syntax causing v2 control-text HTTP 500 after the preceding Dashboard deployment. Replaced it with ordinary DROP CONSTRAINT IF EXISTS / ADD CONSTRAINT SQL. Hotfix commit `a16ac2f` submitted to Railway Dashboard; deploy ID `2b6e52f6-78be-4965-92f3-3b7499d2a100`, pending runtime verification. No trading enablement or MT4 installation.
