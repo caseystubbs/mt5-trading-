@@ -1,3 +1,13 @@
+### 2026-10-13 — MacroFX Phase D attempt 1: blocked by EA local safety (expected)
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Authorization:** Casey, 14:58 ET: "lets just test it now" (close one bridge position, reopen same pair/direction at 0.01, test duplicate-open guard).
+**Run:** `tests/live_demo_trade.py`, runner deployment `acc18125-c49c-4c77-be2c-ee55974c560c`, commit `b280833`.
+**Result:** CLOSE_TICKET `5d65da8f-30e1-42b9-8ad6-c4d7b4bfffca` for NZDUSD #8984249 was claimed by the terminal (19:00:54Z) and acknowledged `FAILED` / `local_safety_block`. This is the EA refusing because the local `EnableTrading` input is OFF (or the drawdown kill switch; heartbeat equity 1004.39 vs balance 994.25 makes the kill switch unlikely). The script aborted before any open; remote control restored to disabled; no command left CLAIMED. **No orders placed or closed.**
+**Evidence gained:** trading-disabled-by-default enforcement verified on the real terminal for a CLOSE command.
+**Next:** Casey sets EA input `EnableTrading=true`; rerun the same script. Note: `EnableTrading=true` alone does nothing — v2.02 executes only claimed remote commands, and remote control is disabled.
+
 ### 2026-10-13 — MacroFX v2.02 real-terminal PAUSE_ENTRIES lifecycle verified
 
 **Agent:** Claude
