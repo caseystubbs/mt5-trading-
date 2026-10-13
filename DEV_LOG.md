@@ -1,3 +1,6 @@
+### 2026-10-13 — MacroFX v2.01 command ACK race fix
+Agent: ChatGPT. Updated both MT4 EA source variants to avoid ACKing a command already marked attempted by another chart; only successful claim owner proceeds. Bumped About version to 2.01 and heartbeat version to MacroFX-MT4-Bridge-2.01-claimfix. Source committed on development branch; MT4 compilation, local installation and broker demo command execution remain unverified. No live trades initiated.
+
 # EST Liquidity Breakout EA — Development Log
 
 ## 2026-10-13 — MacroFX v2 compile-error corrections
