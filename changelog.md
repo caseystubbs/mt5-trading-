@@ -245,3 +245,7 @@ SymbolSelect fails on some demo accounts. EA now validates via bid price check i
 **Agent:** ChatGPT (GPT-6). Fixed invalid PostgreSQL anonymous block syntax causing v2 control-text HTTP 500 after the preceding Dashboard deployment. Replaced it with ordinary DROP CONSTRAINT IF EXISTS / ADD CONSTRAINT SQL. Hotfix commit `a16ac2f` submitted to Railway Dashboard; deploy ID `2b6e52f6-78be-4965-92f3-3b7499d2a100`, pending runtime verification. No trading enablement or MT4 installation.
 
 **Verified production:** Railway Dashboard deployment `2b6e52f6-78be-4965-92f3-3b7499d2a100` SUCCESS. Heartbeat, positions-csv and v2 control-text all returned repeated HTTP 200 after rollout (through 15:13:13 UTC). No automatic trading enabled; EA execution remains untested.
+
+## 2026-10-13 — Visible MT4 EA version
+
+**Agent:** ChatGPT (GPT-6). Added MQL4 About-tab version and description, and created `mt4/FIO_MacroFX_Bridge_v2_0.mq4` to display the version in the EA filename/title. Source-only; requires user MetaEditor compilation and installation. No broker actions.
