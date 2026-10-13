@@ -603,3 +603,5 @@ Levels serve two distinct purposes:
 ### 2026-10-13 — Deployment request: MacroFX v2 safety backend
 
 **Agent:** ChatGPT (GPT-6). Requested Railway Dashboard deployment of source changes: atomic PENDING→CLAIMED server command lock, latest complete position snapshots, and read-only weekly reconciliation preview. Deployment is limited to the Dashboard service on the v2 feature branch; weekly strategy service and MT4 installed binary are unchanged. Trading remains disabled/paused by default, with no MACROFX_ADMIN_KEY configured. Nine unrelated staged Railway changes (including service deletion) must NOT be accepted. Runtime deployment and HTTP checks recorded in a subsequent entry.
+
+**Deployment evidence update (2026-10-13):** Railway Dashboard deployment ID `3d473bbe-8eeb-41ec-8e27-7012b9f5f246` was created for pinned commit `5f6bca4f20ffb555b90b0695626d09b20e40eaae`; Railway reported BUILDING at the last check, not SUCCESS. Prior `dfbf76d` deployment was still SUCCESS. No new-code runtime HTTP verification yet. Do not claim deployment completed until SUCCESS and endpoint checks.
