@@ -1,3 +1,14 @@
+### 2026-10-13 — MacroFX v2.02 real-terminal PAUSE_ENTRIES lifecycle verified
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Files changed:** `tests/live_real_pause.py` (new), `DEV_LOG.md`, `changelog.md`.
+**Precondition:** Casey compiled and attached EA v2.02; heartbeat 18:46:59Z shows `MacroFX-MT4-Bridge-2.02-claimtoken`, demo, account 1041307.
+**Test:** Run inside Railway (`macrofx-verify-runner`, deployment `252894a7-285f-4a86-89f1-4f95e25f4cbf`, commit `11e48f5`). Remote control enabled with `pause_entries=TRUE` for the whole test; only a PAUSE_ENTRIES command created; settings restored afterwards.
+**Result: 13 passed / 0 failed.** Command `b861cb57-71c1-42ef-b547-e40e24dbbc9c` created 18:49:04Z, claimed by the MT4 terminal 18:49:54Z (HTTP 200, UA MetaTrader 4 Terminal/4.1492), acked 45 ms later with `ACKED`/`paused`. Not redelivered; duplicate claim 409; foreign-token ack 409; stored result unchanged. Railway HTTP logs show exactly one EA claim and one EA ack. Final state: no v2 settings row (remote control disabled by default), 0 unresolved commands.
+**Incident (no impact):** Railway created two deployments of the runner (`241a13a3-2d64-4d89-b207-7ff06b31357d` and `252894a7`). The second instance aborted at its "no unresolved commands" guard and did not create a command or cancel the first run's command; its restore wrote identical settings. Lesson: the pre-test guard is required for any runner that writes to the real account.
+**Not done:** No orders placed or closed. Phase D still needs explicit authorization and a free position slot (account holds 2 of 2: NZDUSD #8984249, EURAUD #8950352). EA-side spread/lot-step/drawdown/restart checks still code-reviewed only.
+
 ### 2026-10-13 — MacroFX v2.02 verification, fixes and production backend deploy
 
 **Agent:** Claude

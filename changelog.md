@@ -1,3 +1,7 @@
+### 2026-10-13 — MacroFX v2.02 real-terminal command lifecycle verified
+**Agent:** Claude (Claude Opus 5.5)
+- EA v2.02 on demo 1041307 received, claimed and acknowledged a PAUSE_ENTRIES command (command `b861cb57…`, 13/13 checks). Duplicate claim and foreign ack rejected. Remote control restored to disabled. No orders.
+
 ### 2026-10-13 — MacroFX Bridge v2.02 (backend deployed; EA pending install)
 **Agent:** Claude (Claude Opus 5.5)
 - Claim token: only the winning chart instance can acknowledge a command.
