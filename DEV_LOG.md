@@ -1,3 +1,39 @@
+### 2026-10-13 — MacroFX v2.02 verification, fixes and production backend deploy
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Files changed:** `macrofx_control_v2.py`, `mt4/FIO_MacroFX_Bridge_v2_0.mq4`, `mt4/FIO_MacroFX_Bridge_v2.mq4` (identical), `tests/conftest.py`, `tests/app_under_test.py`, `tests/test_macrofx_v2.py`, `tests/live_runner.py`, `pytest.ini`, `DEV_LOG.md`, `changelog.md`.
+
+**Bugs found**
+1. Ack had no claimant check: any instance with the EA key could ACK/FAIL a CLAIMED command (second chart could overwrite the first claimant's result). Server-side gap behind v2.01's EA-only fix.
+2. EA processed `PAUSE_ENTRIES` *after* the `EnableTrading`/kill-switch gate, so pause returned `local_safety_block` whenever trading was OFF (handoff issue C, confirmed). Pause also only lived in memory until the next poll overwrote it.
+3. No duplicate guard: multiple pending `OPEN_*` for the same pair (or `CLOSE_TICKET` for the same ticket) could be queued.
+4. `reconcile-preview` raised 500 if `macrofx_v2_position_snapshots` did not exist yet (table only created by the positions upload).
+5. v2 schema (including DROP/ADD CONSTRAINT) re-ran on every request, taking an ACCESS EXCLUSIVE lock on the command table on every EA poll. Not a correctness failure in tests, but unnecessary locking.
+
+**Fixes**
+- `/claim` returns a 32-hex `claim_token`; `/ack` requires the matching token. Token never returned in admin history.
+- Creating `PAUSE_ENTRIES` latches `pause_entries=TRUE` in settings (revision+1) immediately — fail-safe direction.
+- Duplicate pending/in-flight OPEN per pair and CLOSE per ticket rejected with 409, serialized by a per-account advisory lock.
+- Snapshot table created in v2 schema; schema applied once per process; constraint migration idempotent. Migration from the deployed schema tested: existing rows preserved.
+- EA v2.02: pause handled before trading gate (still demo-only); parses `claim_token`, sends it on ack; marker still written before execution; skips execution if token missing. Version `MacroFX-MT4-Bridge-2.02-claimtoken`.
+
+**Tests executed**
+- `python3 -m pytest -q` (isolated local PostgreSQL 16, throwaway keys). Baseline on deployed code `5c6215c`: 21 passed / 5 failed. After fixes: **28 passed / 0 failed** (auth, demo-only, stale heartbeat, defaults, validation, lifecycle, duplicate claim, 12-way concurrent claim, expiry, invalid/second-chart acks, uncertain-outcome no-redelivery, duplicate-open race, reconcile preview incl. suffixes/direction/size/magic/manual-close/duplicates/stale targets).
+- Production, authenticated, run inside Railway (`tests/live_runner.py`, service `macrofx-verify-runner` 11134cbb-ed0d-497d-b30a-f6a6dadeaa4c, deployment aadca9d8-83c5-46fc-ae29-14cb333f3855): **43 passed / 0 failed**. Write tests used synthetic account `CLAUDE-TEST-1791916862`; all synthetic rows deleted (0 remaining). Real account 1041307 read-only.
+
+**Deployment:** Dashboard deployment `c2bfad9a-3457-4533-915d-519c5de715cb` (commit `05a023f`) SUCCESS 2026-10-13T18:36Z. Post-deploy EA traffic (heartbeat, positions-csv, control-text) HTTP 200 from MT4 4.1492.
+
+**Production state observed (read-only):** 1041307 demo, EA still v2.01 (heartbeat age 31s). No v2 settings row → remote control disabled by default. 0 unresolved commands. Two bridge-owned positions open: NZDUSD SHORT 0.01 #8984249, EURAUD SHORT 0.01 #8950352; reconcile preview (weekly run 7) shows them matching targets — no close/open candidates.
+
+**Not verified / blockers**
+- EA v2.02 not compiled (no MetaEditor here) and not installed. Real-EA receipt/claim/ack (Phase B 3–5 with the terminal) requires Casey to compile and attach v2.02. The running v2.01 cannot ack under the new server (no token) — harmless while remote control is disabled.
+- Phase C EA-side controls (spread/slippage, lot step, drawdown kill, restart/network outage) are code-reviewed only, not executed.
+- Phase D not run: no authorization given, and account is already at the 2-position limit, so a new 0.01 test order would be blocked by design.
+- Weekly target → v2 command execution is not integrated (preview only), as intended.
+- No demo orders placed. No positions opened or closed. Branch not merged.
+- `macrofx-verify-runner` service left in place (deletion not approved); it is idle. Redeploying it reruns the suite.
+
 ### 2026-10-13 — MacroFX v2.01 command ACK race fix
 Agent: ChatGPT. Updated both MT4 EA source variants to avoid ACKing a command already marked attempted by another chart; only successful claim owner proceeds. Bumped About version to 2.01 and heartbeat version to MacroFX-MT4-Bridge-2.01-claimfix. Source committed on development branch; MT4 compilation, local installation and broker demo command execution remain unverified. No live trades initiated.
 

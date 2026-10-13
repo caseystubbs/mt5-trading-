@@ -1,3 +1,12 @@
+### 2026-10-13 — MacroFX Bridge v2.02 (backend deployed; EA pending install)
+**Agent:** Claude (Claude Opus 5.5)
+- Claim token: only the winning chart instance can acknowledge a command.
+- `PAUSE_ENTRIES` latches server pause and works with local trading OFF (EA).
+- Duplicate pending open-per-pair / close-per-ticket rejected.
+- Reconcile preview no longer 500s without a snapshot table; schema applied once per process.
+- Added `tests/` (28 local tests pass) and `tests/live_runner.py` (43/43 pass against production via Railway, synthetic account, cleaned up).
+- Deployed Dashboard `c2bfad9a` (commit `05a023f`). EA v2.02 needs MetaEditor compile + attach. No demo orders placed.
+
 ### 2026-10-13 — MacroFX Bridge v2.01
 - Fixed duplicate-chart local marker behavior: no erroneous FAILED ACK from a non-claimant.
 - Bumped EA About/version identifier to 2.01 / MacroFX-MT4-Bridge-2.01-claimfix.
