@@ -1,5 +1,11 @@
 # EST Liquidity Breakout EA — Development Log
 
+## 2026-10-13 — MacroFX v2 compile-error corrections
+
+**Agent:** ChatGPT (GPT-6)
+**Evidence:** User MetaEditor screenshot reported six errors, including undeclared `spreadPoints` and invalid newline parsing. Fixed source ordering and newline delimiter in `mt4/FIO_MacroFX_Bridge_v2.mq4` (commit `4bc7853`).
+**Verification:** Static source inspection only; awaiting fresh MetaEditor compile output. **Deployment:** None; existing EA unchanged.
+
 ## 2026-10-12 — MacroFX Bridge v2 EA implementation
 
 **Agent:** ChatGPT (GPT-6)
