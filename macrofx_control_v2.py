@@ -130,7 +130,7 @@ async def control_text(account_id: str, x_ea_api_key: str = Header(default="",al
         await require_demo(conn,account_id)
         settings=await conn.fetchrow("SELECT * FROM macrofx_v2_settings WHERE account_id=$1",account_id)
         if not settings:
-            return "VERSION,2\nENABLED,0\nPAUSE_ENTRIES,1\n"
+            return "VERSION,2\nENABLED,0\nPAUSE_ENTRIES,1\nMAX_POSITIONS,0\nMAX_LOT_PER_PAIR,0.01\nMAX_SPREAD_POINTS,300\nSLIPPAGE_POINTS,30\n"
         lines=["VERSION,2",f"REVISION,{settings['revision']}",
                f"ENABLED,{int(settings['enabled'])}",
                f"PAUSE_ENTRIES,{int(settings['pause_entries'])}",
@@ -153,7 +153,7 @@ async def acknowledge(account_id: str, command_id: uuid.UUID, status: str, resul
         raise HTTPException(422,"Invalid acknowledgement")
     pool=await database()
     async with pool.acquire() as conn:
-        await require_demo(conn,body.account_id)
+        await require_demo(conn,account_id)
         updated=await conn.fetchval("""
           UPDATE macrofx_v2_commands SET status=$3,result=$4,acknowledged_at=NOW()
           WHERE command_id=$1 AND account_id=$2 AND status='PENDING' AND expires_at>NOW()
