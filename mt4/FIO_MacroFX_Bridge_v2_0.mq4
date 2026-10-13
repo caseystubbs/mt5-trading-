@@ -1,6 +1,6 @@
 #property strict
-#property version "2.01"
-#property description "FIO MacroFX Bridge v2.01"
+#property version "2.02"
+#property description "FIO MacroFX Bridge v2.02"
 #property description "Freedom Income Options - MacroFX Bridge"
 #property description "Demo-only Railway remote control; trading disabled by default"
 
@@ -32,7 +32,7 @@ input int BarRetryMinutes = 15;
 input int SlippagePoints = 30;
 input double MaxDrawdownPct = 10.0;
 
-string EA_VERSION = "MacroFX-MT4-Bridge-2.01-claimfix";
+string EA_VERSION = "MacroFX-MT4-Bridge-2.02-claimtoken";
 bool g_remoteEnabled=false;
 bool g_pauseEntries=true;
 int g_remoteMaxPositions=2;
@@ -639,11 +639,22 @@ bool ValidPair(string symbol)
       if(pairs[i]==symbol) return true;
    return false;
 }
-void AckCommand(string id,string status,string result)
+string JsonStringField(string json,string field)
 {
+   string needle="\""+field+"\":\"";
+   int start=StringFind(json,needle);
+   if(start<0) return "";
+   start+=StringLen(needle);
+   int end=StringFind(json,"\"",start);
+   if(end<=start) return "";
+   return StringSubstr(json,start,end-start);
+}
+void AckCommand(string id,string token,string status,string result)
+{
+   // Server only accepts the ack from the instance holding the claim token.
    string url=ApiBaseUrl+"/api/macrofx/v2/ack?account_id="+UrlEncode(AccountId())
-      +"&command_id="+UrlEncode(id)+"&status="+UrlEncode(status)
-      +"&result="+UrlEncode(result);
+      +"&command_id="+UrlEncode(id)+"&claim_token="+UrlEncode(token)
+      +"&status="+UrlEncode(status)+"&result="+UrlEncode(result);
    string resp="";
    int code=HttpRequest("POST",url,"",resp);
    if(code<200 || code>=300) Print("MacroFX v2 ack failed ",id," HTTP ",code);
@@ -651,9 +662,15 @@ void AckCommand(string id,string status,string result)
 bool ExecuteRemoteCommand(string action,string canonical,int ticket,double lots,string &result)
 {
    result="rejected";
+   // Pausing only reduces risk, so it must work even when local trading is OFF
+   // or the kill switch has fired. The server also latches pause_entries=1.
+   if(action=="PAUSE_ENTRIES")
+   {
+      if(!IsDemoAccount()) { result="local_safety_block"; return false; }
+      g_pauseEntries=true; result="paused"; return true;
+   }
    if(!EnableTrading || !g_remoteEnabled || !IsDemoAccount() || g_killed || DrawdownKillTriggered())
    { result="local_safety_block"; return false; }
-   if(action=="PAUSE_ENTRIES") { g_pauseEntries=true; result="paused"; return true; }
    if(action=="RESUME_ENTRIES") { result="remote_settings_control_pause"; return false; }
    if(action=="CLOSE_TICKET")
    {
@@ -763,11 +780,19 @@ void PollRemoteControl()
          if(claimCode!=409) Print("MacroFX v2 claim unavailable HTTP ",claimCode);
          continue;
       }
+      string token=JsonStringField(claimResponse,"claim_token");
+      // Marker persists across terminal restarts and prevents accidental replay,
+      // even if the claim token could not be parsed.
       GlobalVariableSet(key,TimeCurrent());
       GlobalVariablesFlush();
+      if(StringLen(token)!=32)
+      {
+         Print("MacroFX v2 claim token missing; not executing ",id);
+         continue;
+      }
       string result="";
       bool ok=ExecuteRemoteCommand(action,symbol,ticket,lots,result);
-      AckCommand(id,ok?"ACKED":"FAILED",result);
+      AckCommand(id,token,ok?"ACKED":"FAILED",result);
    }
 }
 

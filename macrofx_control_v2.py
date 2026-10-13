@@ -4,7 +4,9 @@ This module is intentionally additive. v1.5 targets remain unchanged until an
 MT4 v2 bridge is installed and the operator explicitly enables v2.
 Admin commands require MACROFX_ADMIN_KEY, distinct from the EA credential.
 """
+import asyncio
 import os
+import secrets
 import uuid
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Header, HTTPException
@@ -42,10 +44,19 @@ CREATE TABLE IF NOT EXISTS macrofx_v2_commands (
  result TEXT
 );
 ALTER TABLE macrofx_v2_commands ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ;
-ALTER TABLE macrofx_v2_commands DROP CONSTRAINT IF EXISTS macrofx_v2_commands_status_check;
-ALTER TABLE macrofx_v2_commands DROP CONSTRAINT IF EXISTS macrofx_v2_commands_status_check_v2;
-ALTER TABLE macrofx_v2_commands ADD CONSTRAINT macrofx_v2_commands_status_check_v2
- CHECK(status IN ('PENDING','CLAIMED','ACKED','FAILED','CANCELLED'));
+ALTER TABLE macrofx_v2_commands ADD COLUMN IF NOT EXISTS claim_token TEXT;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='macrofx_v2_commands_status_check_v2') THEN
+    ALTER TABLE macrofx_v2_commands DROP CONSTRAINT IF EXISTS macrofx_v2_commands_status_check;
+    ALTER TABLE macrofx_v2_commands ADD CONSTRAINT macrofx_v2_commands_status_check_v2
+      CHECK(status IN ('PENDING','CLAIMED','ACKED','FAILED','CANCELLED'));
+  END IF;
+END $$;
+CREATE TABLE IF NOT EXISTS macrofx_v2_position_snapshots (
+ account_id TEXT PRIMARY KEY,
+ captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+ positions_json JSONB NOT NULL
+);
 
 CREATE INDEX IF NOT EXISTS idx_macrofx_v2_commands_poll ON macrofx_v2_commands(account_id,status,created_at);
 """
@@ -78,10 +89,23 @@ def admin_auth(key: str):
     if not configured or key != configured:
         raise HTTPException(403, "Admin authentication required")
 
+_schema_ready = False
+_schema_lock = asyncio.Lock()
+
 async def database():
+    """Apply the v2 schema once per process, not on every EA poll.
+
+    Previously every request re-ran DROP/ADD CONSTRAINT, taking an ACCESS
+    EXCLUSIVE lock on the command table on each heartbeat-cycle poll.
+    """
+    global _schema_ready
     pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute(SCHEMA)
+    if not _schema_ready:
+        async with _schema_lock:
+            if not _schema_ready:
+                async with pool.acquire() as conn:
+                    await conn.execute(SCHEMA)
+                _schema_ready = True
     return pool
 
 async def require_demo(conn, account_id: str):
@@ -122,11 +146,33 @@ async def create_command(body: CommandCreate, x_macrofx_admin_key: str = Header(
     pool = await database()
     async with pool.acquire() as conn:
         await require_demo(conn,body.account_id)
-        cid=uuid.uuid4()
-        await conn.execute("""
-          INSERT INTO macrofx_v2_commands(command_id,account_id,action,symbol,ticket,lots,reason,expires_at)
-          VALUES($1,$2,$3,$4,$5,$6,$7,NOW()+INTERVAL '5 minutes')""",
-          cid,body.account_id,body.action,body.symbol.upper(),body.ticket,body.lots,body.reason)
+        symbol=body.symbol.upper()
+        async with conn.transaction():
+            # Serialize command creation per account so duplicate checks are race-free.
+            await conn.execute("SELECT pg_advisory_xact_lock(hashtext($1))", "macrofx_v2:"+body.account_id)
+            if body.action.startswith("OPEN_"):
+                dup=await conn.fetchval("""SELECT 1 FROM macrofx_v2_commands WHERE account_id=$1
+                  AND action IN ('OPEN_LONG','OPEN_SHORT') AND symbol=$2
+                  AND (status='CLAIMED' OR (status='PENDING' AND expires_at>NOW()))""",body.account_id,symbol)
+                if dup:
+                    raise HTTPException(409,"An open command for this pair is already pending or in flight")
+            if body.action=="CLOSE_TICKET":
+                dup=await conn.fetchval("""SELECT 1 FROM macrofx_v2_commands WHERE account_id=$1
+                  AND action='CLOSE_TICKET' AND ticket=$2
+                  AND (status='CLAIMED' OR (status='PENDING' AND expires_at>NOW()))""",body.account_id,body.ticket)
+                if dup:
+                    raise HTTPException(409,"A close command for this ticket is already pending or in flight")
+            cid=uuid.uuid4()
+            await conn.execute("""
+              INSERT INTO macrofx_v2_commands(command_id,account_id,action,symbol,ticket,lots,reason,expires_at)
+              VALUES($1,$2,$3,$4,$5,$6,$7,NOW()+INTERVAL '5 minutes')""",
+              cid,body.account_id,body.action,symbol,body.ticket,body.lots,body.reason)
+            if body.action=="PAUSE_ENTRIES":
+                # Pausing is fail-safe: latch it server-side immediately so it survives
+                # the EA re-reading settings on its next poll.
+                await conn.execute("""UPDATE macrofx_v2_settings SET pause_entries=TRUE,
+                  revision=revision+1,updated_at=NOW() WHERE account_id=$1 AND pause_entries=FALSE""",
+                  body.account_id)
     return {"command_id":str(cid),"status":"PENDING","expires_in_seconds":300}
 
 @router.get("/control-text",response_class=PlainTextResponse)
@@ -165,16 +211,19 @@ async def claim_command(account_id: str, command_id: uuid.UUID,
             "SELECT enabled FROM macrofx_v2_settings WHERE account_id=$1", account_id)
         if not settings or not settings["enabled"]:
             raise HTTPException(409, "Remote control disabled")
+        token = secrets.token_hex(16)
         claimed = await conn.fetchval("""
-          UPDATE macrofx_v2_commands SET status='CLAIMED',claimed_at=NOW()
+          UPDATE macrofx_v2_commands SET status='CLAIMED',claimed_at=NOW(),claim_token=$3
           WHERE command_id=$1 AND account_id=$2 AND status='PENDING'
-            AND expires_at>NOW() RETURNING command_id""", command_id, account_id)
+            AND expires_at>NOW() RETURNING command_id""", command_id, account_id, token)
     if not claimed:
         raise HTTPException(409, "Already claimed or expired")
-    return {"status": "CLAIMED"}
+    # Only the holder of this token (the winning chart instance) may acknowledge.
+    return {"status": "CLAIMED", "claim_token": token}
 
 @router.post("/ack")
-async def acknowledge(account_id: str, command_id: uuid.UUID, status: str, result: str = "", x_ea_api_key: str = Header(default="",alias="X-EA-API-Key")):
+async def acknowledge(account_id: str, command_id: uuid.UUID, status: str, result: str = "",
+                      claim_token: str = "", x_ea_api_key: str = Header(default="",alias="X-EA-API-Key")):
     _verify(x_ea_api_key)
     if status not in ("ACKED","FAILED"):
         raise HTTPException(422,"Invalid acknowledgement")
@@ -184,7 +233,8 @@ async def acknowledge(account_id: str, command_id: uuid.UUID, status: str, resul
         updated=await conn.fetchval("""
           UPDATE macrofx_v2_commands SET status=$3,result=$4,acknowledged_at=NOW()
           WHERE command_id=$1 AND account_id=$2 AND status='CLAIMED'
-          RETURNING command_id""",command_id,account_id,status,result[:1000])
+            AND claim_token IS NOT NULL AND claim_token=$5
+          RETURNING command_id""",command_id,account_id,status,result[:1000],claim_token)
     if not updated:
         raise HTTPException(409,"Command already handled or expired")
     return {"status":"ok"}
@@ -195,7 +245,7 @@ async def list_commands(account_id: str, x_macrofx_admin_key: str = Header(defau
     pool=await database()
     async with pool.acquire() as conn:
         rows=await conn.fetch("SELECT * FROM macrofx_v2_commands WHERE account_id=$1 ORDER BY created_at DESC LIMIT 50",account_id)
-    return [dict(r) for r in rows]
+    return [{k:v for k,v in dict(r).items() if k!="claim_token"} for r in rows]
 
 @router.get("/admin/reconcile-preview")
 async def reconcile_preview(account_id: str, x_macrofx_admin_key: str = Header(default="")):
