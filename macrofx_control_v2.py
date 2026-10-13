@@ -42,13 +42,11 @@ CREATE TABLE IF NOT EXISTS macrofx_v2_commands (
  result TEXT
 );
 ALTER TABLE macrofx_v2_commands ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ;
-DO $ BEGIN
- IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='macrofx_v2_commands_status_check_v2') THEN
-  ALTER TABLE macrofx_v2_commands DROP CONSTRAINT IF EXISTS macrofx_v2_commands_status_check;
-  ALTER TABLE macrofx_v2_commands ADD CONSTRAINT macrofx_v2_commands_status_check_v2
-   CHECK(status IN ('PENDING','CLAIMED','ACKED','FAILED','CANCELLED'));
- END IF;
-END $;
+ALTER TABLE macrofx_v2_commands DROP CONSTRAINT IF EXISTS macrofx_v2_commands_status_check;
+ALTER TABLE macrofx_v2_commands DROP CONSTRAINT IF EXISTS macrofx_v2_commands_status_check_v2;
+ALTER TABLE macrofx_v2_commands ADD CONSTRAINT macrofx_v2_commands_status_check_v2
+ CHECK(status IN ('PENDING','CLAIMED','ACKED','FAILED','CANCELLED'));
+
 CREATE INDEX IF NOT EXISTS idx_macrofx_v2_commands_poll ON macrofx_v2_commands(account_id,status,created_at);
 """
 
