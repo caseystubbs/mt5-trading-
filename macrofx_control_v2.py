@@ -33,13 +33,17 @@ CREATE TABLE IF NOT EXISTS macrofx_v2_commands (
  symbol TEXT,
  ticket BIGINT,
  lots DOUBLE PRECISION,
- status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','ACKED','FAILED','CANCELLED')),
+ status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','CLAIMED','ACKED','FAILED','CANCELLED')),
+ claimed_at TIMESTAMPTZ,
  reason TEXT NOT NULL,
  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
  expires_at TIMESTAMPTZ NOT NULL,
  acknowledged_at TIMESTAMPTZ,
  result TEXT
 );
+ALTER TABLE macrofx_v2_commands ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ;
+ALTER TABLE macrofx_v2_commands DROP CONSTRAINT IF EXISTS macrofx_v2_commands_status_check;
+ALTER TABLE macrofx_v2_commands ADD CONSTRAINT macrofx_v2_commands_status_check CHECK(status IN ('PENDING','CLAIMED','ACKED','FAILED','CANCELLED'));
 CREATE INDEX IF NOT EXISTS idx_macrofx_v2_commands_poll ON macrofx_v2_commands(account_id,status,created_at);
 """
 
@@ -146,6 +150,26 @@ async def control_text(account_id: str, x_ea_api_key: str = Header(default="",al
                 lines.append(f"COMMAND,{c['command_id']},{c['action']},{c['symbol'] or ''},{c['ticket'] or 0},{c['lots'] or 0}")
         return "\n".join(lines)+"\n"
 
+@router.post("/claim")
+async def claim_command(account_id: str, command_id: uuid.UUID,
+                        x_ea_api_key: str = Header(default="", alias="X-EA-API-Key")):
+    """Atomic, single-consumer claim. Never automatically retry uncertain executions."""
+    _verify(x_ea_api_key)
+    pool = await database()
+    async with pool.acquire() as conn:
+        await require_demo(conn, account_id)
+        settings = await conn.fetchrow(
+            "SELECT enabled FROM macrofx_v2_settings WHERE account_id=$1", account_id)
+        if not settings or not settings["enabled"]:
+            raise HTTPException(409, "Remote control disabled")
+        claimed = await conn.fetchval("""
+          UPDATE macrofx_v2_commands SET status='CLAIMED',claimed_at=NOW()
+          WHERE command_id=$1 AND account_id=$2 AND status='PENDING'
+            AND expires_at>NOW() RETURNING command_id""", command_id, account_id)
+    if not claimed:
+        raise HTTPException(409, "Already claimed or expired")
+    return {"status": "CLAIMED"}
+
 @router.post("/ack")
 async def acknowledge(account_id: str, command_id: uuid.UUID, status: str, result: str = "", x_ea_api_key: str = Header(default="",alias="X-EA-API-Key")):
     _verify(x_ea_api_key)
@@ -156,7 +180,7 @@ async def acknowledge(account_id: str, command_id: uuid.UUID, status: str, resul
         await require_demo(conn,account_id)
         updated=await conn.fetchval("""
           UPDATE macrofx_v2_commands SET status=$3,result=$4,acknowledged_at=NOW()
-          WHERE command_id=$1 AND account_id=$2 AND status='PENDING' AND expires_at>NOW()
+          WHERE command_id=$1 AND account_id=$2 AND status='CLAIMED'
           RETURNING command_id""",command_id,account_id,status,result[:1000])
     if not updated:
         raise HTTPException(409,"Command already handled or expired")
