@@ -193,3 +193,55 @@ async def list_commands(account_id: str, x_macrofx_admin_key: str = Header(defau
     async with pool.acquire() as conn:
         rows=await conn.fetch("SELECT * FROM macrofx_v2_commands WHERE account_id=$1 ORDER BY created_at DESC LIMIT 50",account_id)
     return [dict(r) for r in rows]
+
+@router.get("/admin/reconcile-preview")
+async def reconcile_preview(account_id: str, x_macrofx_admin_key: str = Header(default="")):
+    """Read-only target comparison. Never issues a trade."""
+    admin_auth(x_macrofx_admin_key)
+    pool = await database()
+    async with pool.acquire() as conn:
+        await require_demo(conn, account_id)
+        snapshot = await conn.fetchrow(
+            "SELECT captured_at,positions_json FROM macrofx_v2_position_snapshots WHERE account_id=$1",
+            account_id)
+        if not snapshot or datetime.now(timezone.utc)-snapshot["captured_at"] > timedelta(minutes=2):
+            raise HTTPException(409, "Fresh complete position snapshot required")
+        settings = await conn.fetchrow(
+            "SELECT * FROM macrofx_v2_settings WHERE account_id=$1", account_id)
+        targets = await conn.fetch("""
+            SELECT t.symbol,t.direction,t.lots,t.weekly_run_id FROM macrofx_targets t
+            WHERE t.active=TRUE AND t.expires_at>NOW()
+            ORDER BY ABS(t.score) DESC LIMIT 3""")
+        latest = await conn.fetchval("SELECT MAX(id) FROM macrofx_weekly_runs")
+        if not latest or not targets or len(targets)>2 or any(t["weekly_run_id"]!=latest for t in targets):
+            raise HTTPException(409, "Current weekly target set is unavailable or invalid")
+        positions = snapshot["positions_json"]
+        if isinstance(positions,str):
+            import json
+            positions=json.loads(positions)
+        owned = [p for p in positions if int(p.get("magic",0))==26092601]
+        desired = {t["symbol"]:(t["direction"],float(t["lots"])) for t in targets}
+        if len(owned)>2 or len({p["symbol"] for p in owned})!=len(owned):
+            raise HTTPException(409, "Unexpected bridge positions; manual review")
+        closes=[]
+        for p in owned:
+            direction = "LONG" if str(p["side"]).upper() in ("BUY","LONG") else "SHORT"
+            if p["symbol"] not in desired or desired[p["symbol"]] != (direction,float(p["lots"])):
+                closes.append({"ticket":p["ticket"],"symbol":p["symbol"],"action":"CLOSE_TICKET"})
+        opens=[]
+        if not closes:
+            current={p["symbol"] for p in owned}
+            for t in targets:
+                if t["symbol"] not in current:
+                    opens.append({"symbol":t["symbol"],"action":"OPEN_LONG" if t["direction"]=="LONG" else "OPEN_SHORT","lots":float(t["lots"])})
+        pending=await conn.fetchval("""SELECT COUNT(*) FROM macrofx_v2_commands
+            WHERE account_id=$1 AND status IN ('PENDING','CLAIMED')""",account_id)
+    return {"account_id":account_id,"weekly_run_id":latest,
+            "snapshot_at":snapshot["captured_at"].isoformat(),
+            "enabled":bool(settings and settings["enabled"]),
+            "paused":bool(not settings or settings["pause_entries"]),
+            "open_positions":owned,"targets":[dict(t) for t in targets],
+            "close_candidates":closes,"open_candidates":opens,
+            "unresolved_commands":pending,
+            "note":"Preview only. Never auto-open after a manual close; operator must review and explicitly authorize a new reconciliation."}
+
