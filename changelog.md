@@ -1,3 +1,8 @@
+### 2026-10-13 — MacroFX Bridge v2.01
+- Fixed duplicate-chart local marker behavior: no erroneous FAILED ACK from a non-claimant.
+- Bumped EA About/version identifier to 2.01 / MacroFX-MT4-Bridge-2.01-claimfix.
+- Requires user-side MetaEditor compile and MT4 attachment; execution unverified.
+
 ## 2026-10-13 — MacroFX v2 MetaEditor compile fixes
 
 **Agent:** ChatGPT (GPT-6). Corrected use of `spreadPoints` before declaration and replaced invalid newline delimiter in `StringSplit` with integer character code 10. Commit `4bc7853`. User screenshot reported 6 compiler errors; fresh compilation and zero-error confirmation are pending. Development branch only; no deployment.
