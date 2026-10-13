@@ -1,6 +1,6 @@
 #property strict
-#property version "2.0"
-#property description "FIO MacroFX Bridge v2.0"
+#property version "2.01"
+#property description "FIO MacroFX Bridge v2.01"
 #property description "Freedom Income Options - MacroFX Bridge"
 #property description "Demo-only Railway remote control; trading disabled by default"
 
@@ -32,7 +32,7 @@ input int BarRetryMinutes = 15;
 input int SlippagePoints = 30;
 input double MaxDrawdownPct = 10.0;
 
-string EA_VERSION = "MacroFX-MT4-Bridge-2.0-dev";
+string EA_VERSION = "MacroFX-MT4-Bridge-2.01-claimfix";
 bool g_remoteEnabled=false;
 bool g_pauseEntries=true;
 int g_remoteMaxPositions=2;
@@ -747,7 +747,9 @@ void PollRemoteControl()
       string key=CommandMarker(id);
       if(GlobalVariableCheck(key))
       {
-         AckCommand(id,"FAILED","already_attempted_check_broker");
+         // A different chart or earlier session may own this attempt.
+         // Only the successful server claimant may acknowledge it.
+         Print("MacroFX v2 command already attempted locally: ",id);
          continue;
       }
       // Marker persists across terminal restarts and prevents accidental replay.
