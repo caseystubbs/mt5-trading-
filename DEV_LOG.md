@@ -599,3 +599,7 @@ Levels serve two distinct purposes:
 - Persisted a full latest-position snapshot on every EA position upload, including empty snapshots, so a future reconciliation does not mistake historical positions for currently open trades.
 - Added authenticated read-only /api/macrofx/v2/admin/reconcile-preview using a fresh (<2 minute) snapshot and current weekly targets, with close-before-open ordering and explicit operator review to preserve manual-close precedence.
 - **Not yet complete:** no automated Sunday reconciliation scheduler, no enqueue/apply step, no broker position verification, no Python integration tests, no MetaEditor compile of updated EA, and no demo execution tests. Trading stays disabled/paused. The live Dashboard remains pinned to dfbf76d, not these branch commits. EA source changes require manual recompile and reinstall.
+
+### 2026-10-13 — Deployment request: MacroFX v2 safety backend
+
+**Agent:** ChatGPT (GPT-6). Requested Railway Dashboard deployment of source changes: atomic PENDING→CLAIMED server command lock, latest complete position snapshots, and read-only weekly reconciliation preview. Deployment is limited to the Dashboard service on the v2 feature branch; weekly strategy service and MT4 installed binary are unchanged. Trading remains disabled/paused by default, with no MACROFX_ADMIN_KEY configured. Nine unrelated staged Railway changes (including service deletion) must NOT be accepted. Runtime deployment and HTTP checks recorded in a subsequent entry.
