@@ -42,8 +42,13 @@ CREATE TABLE IF NOT EXISTS macrofx_v2_commands (
  result TEXT
 );
 ALTER TABLE macrofx_v2_commands ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ;
-ALTER TABLE macrofx_v2_commands DROP CONSTRAINT IF EXISTS macrofx_v2_commands_status_check;
-ALTER TABLE macrofx_v2_commands ADD CONSTRAINT macrofx_v2_commands_status_check CHECK(status IN ('PENDING','CLAIMED','ACKED','FAILED','CANCELLED'));
+DO $ BEGIN
+ IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='macrofx_v2_commands_status_check_v2') THEN
+  ALTER TABLE macrofx_v2_commands DROP CONSTRAINT IF EXISTS macrofx_v2_commands_status_check;
+  ALTER TABLE macrofx_v2_commands ADD CONSTRAINT macrofx_v2_commands_status_check_v2
+   CHECK(status IN ('PENDING','CLAIMED','ACKED','FAILED','CANCELLED'));
+ END IF;
+END $;
 CREATE INDEX IF NOT EXISTS idx_macrofx_v2_commands_poll ON macrofx_v2_commands(account_id,status,created_at);
 """
 
@@ -220,6 +225,14 @@ async def reconcile_preview(account_id: str, x_macrofx_admin_key: str = Header(d
             import json
             positions=json.loads(positions)
         owned = [p for p in positions if int(p.get("magic",0))==26092601]
+        for p in owned:
+            p["symbol"] = next((symbol for symbol in (
+                "EURUSD","GBPUSD","AUDUSD","NZDUSD","USDJPY","USDCAD","USDCHF",
+                "EURGBP","EURJPY","EURCHF","EURCAD","EURAUD","EURNZD",
+                "GBPJPY","GBPCHF","GBPCAD","GBPAUD","GBPNZD",
+                "AUDJPY","AUDCHF","AUDCAD","AUDNZD",
+                "NZDJPY","NZDCHF","NZDCAD","CADJPY","CADCHF","CHFJPY")
+                if symbol in p["symbol"]), p["symbol"])
         desired = {t["symbol"]:(t["direction"],float(t["lots"])) for t in targets}
         if len(owned)>2 or len({p["symbol"] for p in owned})!=len(owned):
             raise HTTPException(409, "Unexpected bridge positions; manual review")
