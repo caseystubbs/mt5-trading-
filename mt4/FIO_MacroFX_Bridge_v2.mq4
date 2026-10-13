@@ -747,6 +747,16 @@ void PollRemoteControl()
          continue;
       }
       // Marker persists across terminal restarts and prevents accidental replay.
+      // Atomic server claim prevents concurrent chart instances executing one instruction.
+      string claimUrl=ApiBaseUrl+"/api/macrofx/v2/claim?account_id="+UrlEncode(AccountId())
+         +"&command_id="+UrlEncode(id);
+      string claimResponse="";
+      int claimCode=HttpRequest("POST",claimUrl,"",claimResponse);
+      if(claimCode!=200)
+      {
+         if(claimCode!=409) Print("MacroFX v2 claim unavailable HTTP ",claimCode);
+         continue;
+      }
       GlobalVariableSet(key,TimeCurrent());
       GlobalVariablesFlush();
       string result="";
