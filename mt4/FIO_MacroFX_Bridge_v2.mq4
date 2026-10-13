@@ -1,4 +1,8 @@
 #property strict
+#property version "2.0"
+#property description "FIO MacroFX Bridge v2.0"
+#property description "Freedom Income Options - MacroFX Bridge"
+#property description "Demo-only Railway remote control; trading disabled by default"
 
 /*
  FIO MacroFX Bridge v1
