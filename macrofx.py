@@ -195,6 +195,15 @@ async def positions_csv(account_id: str, body: str = Body(default="", media_type
         if len(p) >= 10:
             rows.append(p[:10])
     async with pool.acquire() as conn:
+        # Atomic latest complete snapshot, including empty-position uploads.
+        await conn.execute("""CREATE TABLE IF NOT EXISTS macrofx_v2_position_snapshots (
+            account_id TEXT PRIMARY KEY, captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            positions_json JSONB NOT NULL)""")
+        await conn.execute("""INSERT INTO macrofx_v2_position_snapshots(account_id,captured_at,positions_json)
+            VALUES($1,NOW(),$2::jsonb) ON CONFLICT(account_id) DO UPDATE SET
+            captured_at=NOW(),positions_json=EXCLUDED.positions_json""", account_id,
+            json.dumps([{"symbol":p[0],"ticket":int(_num(p[1],0)),"side":p[2],
+                         "lots":_num(p[3]),"magic":int(_num(p[9],0))} for p in rows]))
         for p in rows:
             await conn.execute(
                 "INSERT INTO macrofx_positions(account_id,symbol,ticket,side,lots,open_price,current_price,pnl,swap,commission,magic) "
