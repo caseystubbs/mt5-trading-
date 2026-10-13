@@ -1,3 +1,19 @@
+### 2026-10-13 — MacroFX Batch 1: EA entry guards on the real terminal PASSED (14/14)
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Authorization:** Casey 15:31 ET. Runner deployment `0def482b-ee28-4926-8d02-361974054388` (commit `b1a93b1`, `tests/live_guard_tests.py`). An earlier deployment `9c5ddf48…` stalled in Railway's builder and was removed without running.
+| Step | Command | Result |
+|---|---|---|
+| Free slot: close EURAUD SHORT #8950352 | `2dd9868a-9ccf-45a2-b827-9b4e0f47774e` | ACKED `closed` — fill 1.60348, spread 9, slip 0, P&L +11.21, comm -0.06 |
+| Open EURAUD while paused | `0f9677a3-6008-4592-b2e4-7a6a2fe098c0` | FAILED `entries_paused` |
+| Open EURAUD with spread limit 0 | `cf083b3b-e5b8-4239-ae4e-404bb8788b33` | FAILED `spread_or_quote_block` |
+| Duplicate NZDUSD open (slot free) | `cb47cbae-5703-4a10-8a78-fdce1b51c4fa` | FAILED `pair_already_open` |
+| Unknown symbol ABCDEF | `1b69568d-75cd-4559-9e8d-c138853161eb` | FAILED `pair_or_lot_limit` |
+| Restore EURAUD SHORT 0.01 | `db1f6c03-4159-4e8a-b29b-b2a5489ecd17` | ACKED `opened_ticket_8992699` — fill 1.6036, spread 7, slip 1, comm -0.06 |
+**Positions after:** EURAUD SHORT 0.01 #8992699, NZDUSD SHORT 0.01 #8992632 (bridge-owned, match week 7). Remote control restored to disabled; nothing left CLAIMED.
+**Still untested:** broker lot-step rejection (server allows only 0.01, so unreachable remotely), drawdown kill switch, restart, network outage.
+
 ### 2026-10-13 — MacroFX Phase D demo execution PASSED (22/22)
 
 **Agent:** Claude
