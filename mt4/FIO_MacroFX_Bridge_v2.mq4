@@ -705,8 +705,8 @@ void PollRemoteControl()
    int code=HttpRequest("GET",url,"",response);
    if(code!=200) { Print("MacroFX v2 control unavailable HTTP ",code); return; }
    string lines[];
-   int n=StringSplit(response,'\\n',lines);
-   if(n<3 || StringFind(response,"VERSION,2\\n")!=0) return;
+   int n=StringSplit(response,10,lines);
+   if(n<3 || StringFind(response,"VERSION,2")!=0) return;
    bool enabled=false,paused=true;
    int positions=0,slippage=0;
    double maxLots=0,maxSpread=0;
