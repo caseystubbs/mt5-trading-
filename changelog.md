@@ -1,3 +1,7 @@
+### 2026-10-13 — MacroFX v2.02 demo order execution verified
+**Agent:** Claude (Claude Opus 5.5)
+- Remote CLOSE (#8984249) and OPEN_SHORT NZDUSD 0.01 (#8992632) executed on demo 1041307 via the full command lifecycle; fills and snapshots recorded; duplicate open refused by the EA (position_limit). 22/22 checks. Remote control left disabled.
+
 ### 2026-10-13 — MacroFX v2.02 real-terminal command lifecycle verified
 **Agent:** Claude (Claude Opus 5.5)
 - EA v2.02 on demo 1041307 received, claimed and acknowledged a PAUSE_ENTRIES command (command `b861cb57…`, 13/13 checks). Duplicate claim and foreign ack rejected. Remote control restored to disabled. No orders.

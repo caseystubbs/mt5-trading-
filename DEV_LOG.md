@@ -1,3 +1,18 @@
+### 2026-10-13 — MacroFX Phase D demo execution PASSED (22/22)
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Authorization:** Casey 14:58 ET; EA input `EnableTrading=true` set by Casey 15:13 ET.
+**Run:** `tests/live_demo_trade.py`, runner deployment `93f273da-a5bd-479e-8445-ee0170562410` (redeploy of commit `b280833`). Demo account 1041307, EA v2.02.
+| Step | Command | Claimed / Acked (UTC) | Result | Broker fill |
+|---|---|---|---|---|
+| Close NZDUSD SHORT #8984249 | `c65a4e33-b217-41e7-9f9f-c4bd54fc310e` CLOSE_TICKET | 19:16:34.77 / 19:16:35.09 | ACKED `closed` | 0.56148 req/fill, spread 7 pts, slip 0, P&L -1.13, comm -0.03 |
+| Reopen NZDUSD SHORT 0.01 | `fc9f8ab7-039a-42d6-a39a-440f29a28367` OPEN_SHORT | 19:18:34.74 / 19:18:35.04 | ACKED `opened_ticket_8992632` | 0.56136 req/fill, spread 6 pts, slip 0, comm -0.03 |
+| Duplicate open NZDUSD | `5ae538f7-7e66-4989-aaae-7b2a704e27cc` OPEN_SHORT | 19:20:34.79 / 19:20:34.84 | FAILED `position_limit` | none |
+Railway snapshot confirmed close (ticket absent), new ticket 8992632 NZDUSD SHORT 0.01 magic 26092601, and exactly 2 bridge positions after the duplicate attempt. Both fills stored in `macrofx_fills`. Re-claim of executed commands rejected (409). Remote control restored to disabled; no command left CLAIMED.
+**Open demo positions now:** NZDUSD SHORT 0.01 #8992632, EURAUD SHORT 0.01 #8950352 (week 7 targets, matching). No unintended test positions.
+**Limits of this evidence:** the duplicate was stopped by the position limit; the separate pair-already-open guard was not reached. Spread/lot-step rejection, drawdown kill switch, restart and network-outage behavior remain code-reviewed only. EA `EnableTrading` is now ON (it only acts on claimed remote commands; remote control is disabled). Branch not merged.
+
 ### 2026-10-13 — MacroFX Phase D attempt 1: blocked by EA local safety (expected)
 
 **Agent:** Claude
