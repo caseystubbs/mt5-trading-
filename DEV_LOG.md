@@ -609,3 +609,7 @@ Levels serve two distinct purposes:
 ### 2026-10-13 — Production 500 migration hotfix
 
 **Agent:** ChatGPT (GPT-6). After deployment 3d473bbe reported SUCCESS, observed HTTP 500 on `/api/macrofx/v2/control-text` while heartbeat and positions-csv remained HTTP 200. Railway runtime traceback: `asyncpg.exceptions.PostgresSyntaxError: syntax error at or near "$"` in `macrofx_control_v2.py` SCHEMA. Replaced invalid `DO $ ... END $;` with standard PostgreSQL constraint DROP IF EXISTS / ADD statements; verified updated source blob SHA 891eda84. Hotfix commit `a16ac2fdaf666417b6c4e6314e6ada3be896c651` submitted to Railway Dashboard as pinned source, deployment `2b6e52f6-78be-4965-92f3-3b7499d2a100`. Verification of success and HTTP 200 still pending. Automatic trading remains disabled; MT4 binary unchanged.
+
+### 2026-10-13 — Production hotfix verified
+
+**Agent:** ChatGPT (GPT-6). Railway Dashboard deployment `2b6e52f6-78be-4965-92f3-3b7499d2a100` (commit `a16ac2fdaf666417b6c4e6314e6ada3be896c651`) reported SUCCESS at 15:09:14 UTC. HTTP logs after rollout through 15:13:13 UTC show repeated 200 responses for `/api/macrofx/heartbeat`, `/api/macrofx/positions-csv`, and `/api/macrofx/v2/control-text`. Earlier 500 errors occurred before rollout. SQL migration outage resolved. This verifies connectivity, not broker execution; remote trading remains disabled pending EA compilation and demo trade tests.
