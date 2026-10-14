@@ -1,3 +1,7 @@
+### 2026-10-14 — MacroFX dashboard: Feedback tab
+**Agent:** Claude (Claude Opus 5.5)
+- Automatic system analysis: sample-size gate, model vs test trades, Sunday-vs-weekday spread cost, cost breakdown, turnover, findings, research-question status, full weekly review. 36/36 tests pass.
+
 ### 2026-10-14 — MacroFX dashboard
 **Agent:** Claude (Claude Opus 5.5)
 - New read-only dashboard at `/macrofx`: Overview, This Week, History, How It Works, Changelog, Upgrades tabs.

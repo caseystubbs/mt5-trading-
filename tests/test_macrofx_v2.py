@@ -375,3 +375,46 @@ def test_next_weekly_run_is_friday_evening_et():
         assert n > now and (n - now).days < 7
         et = n.astimezone(ZoneInfo("America/New_York"))
         assert et.weekday() == 4 and et.hour in (20, 21)
+
+
+# ---------- Analysis (pure functions) ----------
+
+def test_spread_cost_conversion():
+    from macrofx_analysis import spread_cost_usd
+    px = {"USDJPY": 150.0, "USDCHF": 0.80, "AUDUSD": 0.65}
+    assert abs(spread_cost_usd("EURUSD", 10, 0.01, px) - 0.10) < 1e-9      # 1 pip on 1k units = $0.10
+    assert abs(spread_cost_usd("EURJPY", 300, 0.01, px) - 2.0) < 1e-9      # 300 JPY / 150
+    assert abs(spread_cost_usd("AUDCHF", 200, 0.01, px) - 2.5) < 1e-9      # 2 CHF / 0.80
+    assert abs(spread_cost_usd("EURAUD", 100, 0.01, px) - 0.65) < 1e-9     # 1 AUD * 0.65
+    assert spread_cost_usd("EURJPY", 300, 0.01, {"USDJPY": 1.0}) is None   # absurd price -> unpriced
+    assert spread_cost_usd("EURNOK", 10, 0.01, {}) is None
+
+
+def test_execution_window_uses_et_sunday():
+    from macrofx_analysis import execution_window
+    assert execution_window("2026-10-11T21:02:00+00:00") == "Sunday reopen"   # Sun 5:02 PM ET
+    assert execution_window("2026-10-13T19:16:00+00:00") == "Weekday"
+    assert execution_window("2026-10-12T02:00:00+00:00") == "Sunday reopen"   # Sun 10 PM ET
+
+
+def test_analysis_separates_model_and_test_trades():
+    from macrofx_analysis import analyze
+    fills = [
+        {"captured_at": "2026-10-04T21:01:00+00:00", "symbol": "EURAUD", "ticket": 1, "action": "OPEN_SHORT", "lots": 0.01, "spread_points": 245, "notes": "target_open"},
+        {"captured_at": "2026-10-13T19:53:00+00:00", "symbol": "EURAUD", "ticket": 1, "action": "CLOSE", "lots": 0.01, "spread_points": 9, "notes": "remote_command"},
+        {"captured_at": "2026-10-04T21:05:00+00:00", "symbol": "USDCHF", "ticket": 2, "action": "OPEN_LONG", "lots": 0.01, "spread_points": 276, "notes": "target_open"},
+        {"captured_at": "2026-10-11T21:02:00+00:00", "symbol": "USDCHF", "ticket": 2, "action": "CLOSE", "lots": 0.01, "spread_points": 161, "notes": "target_removed"},
+    ]
+    trades = [
+        {"ticket": 1, "symbol": "EURAUD", "direction": "SHORT", "status": "CLOSED", "net_pnl": 11.31, "pnl": 11.21, "swap": .16, "commission": -.06, "holding_hours": 214, "exit_reason": "remote_command", "mfe_net": 0, "mae_net": 0, "position_samples": 0},
+        {"ticket": 2, "symbol": "USDCHF", "direction": "LONG", "status": "CLOSED", "net_pnl": -0.54, "pnl": -.9, "swap": .41, "commission": -.05, "holding_hours": 168, "exit_reason": "target_removed", "mfe_net": 0, "mae_net": 0, "position_samples": 0},
+    ]
+    runs = [{"week_ending": "2026-10-02", "targets_json": [{"symbol": "EURAUD", "direction": "SHORT"}, {"symbol": "USDCHF", "direction": "LONG"}]},
+            {"week_ending": "2026-10-09", "targets_json": [{"symbol": "EURAUD", "direction": "SHORT"}, {"symbol": "NZDUSD", "direction": "SHORT"}]}]
+    A = analyze(fills, trades, {}, runs, {"USDCHF": 0.8, "AUDUSD": 0.65}, [])
+    assert A["model_closed"] == 1 and A["performance"]["all"]["n"] == 2
+    assert A["performance"]["model"]["net"] == -0.54
+    assert A["spread_ratio"] > 3
+    assert A["turnover"] == [{"week_ending": "2026-10-09", "kept": 1, "changed": 1, "targets": 2}]
+    titles = " ".join(f["title"] for f in A["findings"])
+    assert "Sunday reopen" in titles and "too small" in titles

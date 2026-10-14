@@ -91,6 +91,14 @@ td.num,th.num{text-align:right}
 .md blockquote{margin:12px 0;padding:10px 14px;background:var(--warn-bg);border-radius:8px}
 .md blockquote p{margin:0}
 .muted{color:var(--text-3)}
+.finding{background:var(--surface);border:1px solid var(--border);border-left-width:4px;border-radius:10px;padding:12px 16px}
+.finding.bad{border-left-color:var(--bad)} .finding.warn{border-left-color:var(--warn)} .finding.info{border-left-color:var(--accent)}
+.finding .lv{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-right:8px}
+.finding.bad .lv{color:var(--bad)} .finding.warn .lv{color:var(--warn)} .finding.info .lv{color:var(--accent)}
+.finding h3{display:inline;font-size:14.5px;margin:0}
+.finding p{margin:6px 0 0;color:var(--text-2)} .finding .ev{font-size:12.5px;color:var(--text-3);margin-top:4px}
+.bar{height:6px;background:var(--surface-2);border-radius:3px;margin-top:8px;overflow:hidden}
+.bar > i{display:block;height:100%;background:var(--accent);border-radius:3px}
 .empty{padding:18px;color:var(--text-3);text-align:center}
 .seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px}
 .seg button{border:0;background:var(--surface);padding:6px 12px;font:inherit;font-size:12.5px;color:var(--text-2);cursor:pointer}
@@ -110,6 +118,7 @@ footer{color:var(--text-3);font-size:12px;padding:20px 0}
       <button role="tab" data-tab="overview" aria-selected="true">Overview</button>
       <button role="tab" data-tab="week">This Week</button>
       <button role="tab" data-tab="history">History</button>
+      <button role="tab" data-tab="feedback">Feedback</button>
       <button role="tab" data-tab="rules">How It Works</button>
       <button role="tab" data-tab="changelog">Changelog</button>
       <button role="tab" data-tab="upgrades">Upgrades</button>
@@ -165,6 +174,40 @@ footer{color:var(--text-3);font-size:12px;padding:20px 0}
     <div class="tablewrap" id="fills"></div>
     <h2>Remote commands</h2>
     <div class="tablewrap" id="commands"></div>
+  </section>
+
+  <section class="tab" id="tab-feedback">
+    <div class="grid kpis" id="fb-kpis"></div>
+    <h2>What the data says</h2>
+    <p class="sub">Generated from the system's own records every time this page loads. Each finding shows its sample size.</p>
+    <div class="grid" id="findings"></div>
+    <h2>Costs</h2>
+    <p class="sub">Closed trades. Spread is already inside P&amp;L (you buy at the ask, sell at the bid); it's estimated separately to show how much it takes.</p>
+    <div class="grid two">
+      <div class="tablewrap" id="costs"></div>
+      <div class="tablewrap" id="exec"></div>
+    </div>
+    <h2>Results: model trades vs. everything</h2>
+    <p class="sub">"Model" = opened and closed by the weekly model. Trades closed during testing are kept separate so they don't distort the signal's record.</p>
+    <div class="tablewrap" id="perf"></div>
+    <h2>Trade analysis</h2>
+    <p class="sub">Given back = best point while open minus where it closed. Needs per-minute position history.</p>
+    <div class="tablewrap" id="fb-trades"></div>
+    <div class="grid two">
+      <div>
+        <h2>Week-to-week stability</h2>
+        <p class="sub">How many of the 2 targets changed at each weekly run.</p>
+        <div class="tablewrap" id="turnover"></div>
+      </div>
+      <div>
+        <h2>Research questions</h2>
+        <p class="sub">Tracked by the weekly review. No rule changes until the data answers them.</p>
+        <div class="tablewrap" id="research"></div>
+      </div>
+    </div>
+    <h2>Latest official weekly review</h2>
+    <p class="sub">Written by the model at the Friday run.</p>
+    <div class="md" id="review"></div>
   </section>
 
   <section class="tab" id="tab-rules"><div class="md" id="doc-rules"><p class="muted">Loading…</p></div></section>
@@ -393,7 +436,65 @@ function render(d) {
     {h:"Reason", f:c=>`<span class="muted">${esc(c.reason)}</span>`},
   ], d.commands, "No remote commands yet.");
 
+  renderFeedback(d);
   $("#footer").textContent = `Read-only view · updated ${new Date(d.generated_at).toLocaleTimeString("en-US",ET)} ET · refreshes every minute`;
+}
+
+function renderFeedback(d) {
+  const A = d.analysis || {};
+  if (A.error || !A.performance) { $("#fb-kpis").innerHTML = `<div class="empty">Analysis unavailable${A.error?": "+esc(A.error):""}</div>`; return; }
+  const m = A.performance.model || {}, need = A.min_trades_to_judge, pct = Math.min(100, 100*A.model_closed/need);
+  $("#fb-kpis").innerHTML = [
+    `<div class="kpi"><div class="l">Model trades closed</div><div class="v">${A.model_closed} / ${need}</div><div class="d">needed before judging the signal</div><div class="bar"><i style="width:${pct}%"></i></div></div>`,
+    kpi("Model net", smoney(m.net), m.n?`${m.n} trades`:"", cls(m.net)),
+    kpi("Model win rate", m.n?Math.round(m.win_rate*100)+"%":"—", m.n?`avg win ${smoney(m.avg_win)} · avg loss ${smoney(m.avg_loss)}`:""),
+    kpi("Sunday vs weekday spread", A.spread_ratio?`${Math.round(A.spread_ratio)}×`:"—", "wider at the reopen", A.spread_ratio>=3?"neg":""),
+    kpi("Targets changed / week", A.avg_target_changes==null?"—":num(A.avg_target_changes,1)+" of 2", "each change pays 2 spreads"),
+    kpi("Max daily drawdown", A.max_daily_drawdown==null?"—":num(A.max_daily_drawdown*100,2)+"%", "kill switch at −10%"),
+  ].join("");
+  const label = {bad:"Problem", warn:"Watch", info:"Note"};
+  $("#findings").innerHTML = (A.findings||[]).map(f=>`<div class="finding ${f.level}"><span class="lv">${label[f.level]||f.level}</span><h3>${esc(f.title)}</h3><p>${esc(f.detail)}</p><div class="ev">${esc(f.evidence)}</div></div>`).join("");
+  const c = A.costs || {};
+  $("#costs").innerHTML = table([{h:"Item", f:r=>r[0]}, {h:"Amount", num:1, f:r=>`<span class="${r[2]||""}">${smoney(r[1])}</span>`}], [
+    ["Price result (P&amp;L)", c.gross_closed, cls(c.gross_closed)],
+    ["Swap", c.swap_closed, cls(c.swap_closed)],
+    ["Commission", c.commission_closed, cls(c.commission_closed)],
+    ["<b>Net realized</b>", c.net_closed, cls(c.net_closed)],
+    [`<span class="muted">Spread paid, estimated (inside P&amp;L)</span>`, -(c.est_spread_total||0), "neg"],
+  ]);
+  $("#exec").innerHTML = table([
+    {h:"When filled", f:r=>`<b>${esc(r.window)}</b>`}, {h:"Fills", num:1, f:r=>r.fills},
+    {h:"Avg spread (pts)", num:1, f:r=>num(r.avg_spread_points,0)}, {h:"Max", num:1, f:r=>num(r.max_spread_points,0)},
+    {h:"Est. cost", num:1, f:r=>money(r.est_spread_cost)}, {h:"Per fill", num:1, f:r=>money(r.avg_cost_per_fill)},
+  ], A.execution||[], "No fills with recorded spread yet.");
+  const P = A.performance;
+  $("#perf").innerHTML = table([
+    {h:"Group", f:r=>`<b>${r[0]}</b>`}, {h:"Trades", num:1, f:r=>r[1].n||0},
+    {h:"Net", num:1, f:r=>`<span class="${cls(r[1].net)}">${smoney(r[1].net)}</span>`},
+    {h:"Win rate", num:1, f:r=>r[1].n?Math.round(r[1].win_rate*100)+"%":"—"},
+    {h:"Avg win", num:1, f:r=>smoney(r[1].avg_win)}, {h:"Avg loss", num:1, f:r=>smoney(r[1].avg_loss)},
+    {h:"Profit factor", num:1, f:r=>r[1].profit_factor==null?"—":num(r[1].profit_factor,2)},
+    {h:"Best", num:1, f:r=>smoney(r[1].best)}, {h:"Worst", num:1, f:r=>smoney(r[1].worst)},
+    {h:"Avg days held", num:1, f:r=>r[1].n?num(r[1].avg_days,1):"—"},
+  ], [["Model trades", P.model||{}], ["All closed trades", P.all||{}]]);
+  $("#fb-trades").innerHTML = table([
+    {h:"Pair", f:t=>`<b>${esc(t.symbol)}</b>`}, {h:"Side", f:t=>side(t.direction)},
+    {h:"Status", f:t=>`<span class="tag ${t.status==="OPEN"?"wait":"neutral"}">${t.status}</span>`},
+    {h:"Origin", f:t=>`<span class="tag ${t.origin==="model"?"ok":"neutral"}">${t.origin}</span>`},
+    {h:"Entry score", num:1, f:t=>t.entry_signal_score?num(t.entry_signal_score,3):`<span class="muted">not recorded</span>`},
+    {h:"Entry spread", num:1, f:t=>num(t.entry_spread_points,0)},
+    {h:"Net", num:1, f:t=>`<b class="${cls(t.net_pnl)}">${smoney(t.net_pnl)}</b>`},
+    {h:"Worst (MAE)", num:1, f:t=>smoney(t.mae_net)}, {h:"Best (MFE)", num:1, f:t=>smoney(t.mfe_net)},
+    {h:"Given back", num:1, f:t=>t.giveback==null?`<span class="muted">—</span>`:smoney(-t.giveback)},
+  ], A.trades||[]);
+  $("#turnover").innerHTML = table([
+    {h:"Week ending", f:r=>day(r.week_ending)}, {h:"Kept", num:1, f:r=>r.kept}, {h:"Changed", num:1, f:r=>r.changed},
+  ], [...(A.turnover||[])].reverse(), "Needs at least two weekly runs.");
+  $("#research").innerHTML = table([
+    {h:"Question", f:r=>`<span style="white-space:normal">${esc(r.question)}</span>`},
+    {h:"Status", f:r=>`<span class="tag ${/^Enough|^Measured/.test(r.status)?"ok":"wait"}">${esc(r.status)}</span>`},
+  ], A.research||[]);
+  $("#review").innerHTML = d.review_html || `<p class="muted">No weekly review yet.</p>`;
 }
 
 async function refresh() {

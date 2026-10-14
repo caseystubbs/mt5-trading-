@@ -1,3 +1,18 @@
+### 2026-10-14 — MacroFX dashboard: Feedback & analysis tab
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Requested by:** Casey — "what about feedback and analysis of the system".
+**Files:** `macrofx_analysis.py` (new), `macrofx_dashboard.py`, `static/macrofx_dashboard.html`, `tests/test_macrofx_v2.py` (+3 tests).
+**What it does:** New **Feedback** tab that evaluates the system from its own records on every page load:
+- Sample-size gate: model-closed trades vs. 30 needed before judging the signal.
+- Trades split by origin, **model** vs **test/manual**, so testing closes don't distort the signal's record.
+- Execution cost by window (Sunday reopen vs weekday): average/max spread and estimated USD spread cost per fill, converted per quote currency from the latest closes, with a sanity guard against bad prices.
+- Cost breakdown (price P&L, swap, commission, net, estimated spread inside P&L); week-to-week target turnover; max daily drawdown.
+- Generated findings (Problem / Watch / Note) with evidence; the four research questions from the weekly review, with data-readiness status; the latest official weekly review rendered in full.
+**Verification:** `pytest` 36 passed / 0 failed (+3: spread-cost conversion incl. JPY/CHF/AUD quotes and bad-price guard, ET Sunday window, model-vs-test split + turnover + findings). Local render checked with Playwright. Against realistic prices the estimate gives $12.91 spread over 6 Sunday-reopen fills vs $0.24 over 4 weekday fills, in line with the earlier manual estimate (~$12).
+**No writes, no commands, no strategy changes.**
+
 ### 2026-10-14 — MacroFX dashboard (/macrofx)
 
 **Agent:** Claude

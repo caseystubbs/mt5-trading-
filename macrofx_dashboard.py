@@ -26,6 +26,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 from macrofx import get_pool
 from macrofx_engine import HORIZONS, MAX_POSITIONS, MIN_ABS_PAIR_SCORE, MIN_AGREEMENT, build_snapshot, choose_targets, pair_scores
 from macrofx_feedback import build_feedback_snapshot
+from macrofx_analysis import analyze
 
 router = APIRouter(tags=["macrofx-dashboard"])
 
@@ -199,6 +200,13 @@ async def dashboard_data():
                 FROM macrofx_daily_equity WHERE account_id=$1 ORDER BY equity_date""", ACCOUNT)
         out["equity"] = [_row(e) for e in equity]
 
+        price_rows = await conn.fetch("""SELECT DISTINCT ON (symbol) symbol,close FROM macrofx_daily_bars
+            ORDER BY symbol,bar_date DESC""")
+        prices = {r["symbol"]: float(r["close"]) for r in price_rows}
+        review = await conn.fetchval("SELECT report_markdown FROM macrofx_weekly_runs ORDER BY week_ending DESC LIMIT 1")
+        all_fills = await conn.fetch("""SELECT captured_at,symbol,ticket,action,lots,spread_points,notes,exit_reason
+            FROM macrofx_fills WHERE account_id=$1 ORDER BY captured_at""", ACCOUNT)
+
     # Trade-by-trade review (MAE/MFE, holding time, exit reason)
     try:
         fb = await build_feedback_snapshot(pool, ACCOUNT, days=365)
@@ -206,6 +214,13 @@ async def dashboard_data():
         out["trade_summary"] = _clean(fb.get("summary", {}))
     except Exception as e:  # never break the page over the review layer
         out["trades"], out["trade_summary"] = [], {"error": str(e)[:200]}
+
+    try:
+        out["analysis"] = _clean(analyze([_row(f) for f in all_fills], out["trades"], out["trade_summary"],
+                                         out["runs"], prices, out["equity"]))
+    except Exception as e:
+        out["analysis"] = {"error": str(e)[:200]}
+    out["review_html"] = _md_html(review) if review else None
 
     nxt = next_weekly_run(now)
     out["schedule"] = {"next_run_utc": nxt.isoformat(), "next_run_et": nxt.astimezone(ET).isoformat()}
@@ -261,6 +276,12 @@ DOCS = {
 }
 
 
+def _md_html(text: str) -> str:
+    # Logs often start a list straight after a paragraph line; markdown needs a blank line there.
+    text = re.sub(r"(?m)^(?![-*] |\d+\. |\s|$|#|\|)(.+)\n(?=[-*] |\d+\. )", r"\1\n\n", text)
+    return md.markdown(text.replace("<", "&lt;"), extensions=["tables", "fenced_code", "sane_lists"])
+
+
 @router.get("/api/macrofx/doc/{name}", response_class=PlainTextResponse)
 async def doc(name: str, format: str = "md"):
     if name not in DOCS:
@@ -271,10 +292,7 @@ async def doc(name: str, format: str = "md"):
         raise HTTPException(404, "Document not found")
     if format == "html":
         # Repo docs are trusted, but raw HTML in them is escaped anyway.
-        # Logs often start a list straight after a paragraph line; markdown needs a blank line there.
-        text = re.sub(r"(?m)^(?![-*] |\d+\. |\s|$|#|\|)(.+)\n(?=[-*] |\d+\. )", r"\1\n\n", text)
-        html = md.markdown(text.replace("<", "&lt;"), extensions=["tables", "fenced_code", "sane_lists"])
-        return HTMLResponse(html)
+        return HTMLResponse(_md_html(text))
     return text
 
 
