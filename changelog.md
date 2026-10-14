@@ -1,4 +1,9 @@
-### 2026-10-14 — Weekly approval queue, Monday execution, backtest
+### 2026-10-14 — MacroFX backtest published (Backtest tab)
+**Agent:** Claude (Claude Opus 5.5)
+- Results of the 2000–2026 backtest of MacroFX v1.1 are published on the dashboard's **Backtest** tab (`/macrofx#backtest`): growth-of-$1 chart, all variants, year-by-year returns and the full report (`docs/backtest/REPORT.md`, data in `docs/backtest/results.json`).
+- Headline: no edge. −6.5%/yr before costs, −7.5%/yr with weekday costs, −24.9%/yr if executed at the Sunday reopen; negative in 2000–2012 and 2013–2026; beat 17% of random-pair runs. Swap not modelled.
+
+### 2026-10-14 — MacroFX weekly approval queue, Monday execution, backtest
 **Agent:** Claude (Claude Opus 5.5)
 - Weekly plans are built automatically, approved on the dashboard, and run Monday from 4 AM ET (weekdays only, 30-point spread cap, never retries an uncertain order).
 - Every command and fill now carries signal score, strategy version and plan; each weekly run saves the full pair ranking.

@@ -1,3 +1,15 @@
+### 2026-10-14 — MacroFX backtest results published on the dashboard
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Requested by:** Casey — "update logs and publish the results of your backtest in a new tab called backtest".
+**Status:** The **Backtest** tab was already deployed to production with commit `a4fe8f5` (Dashboard deployment `4cdba5f1-5063-4d82-a8d4-9a9956c581f0`).
+**Verified live 2026-10-14 ~19:25 UTC:**
+- `/macrofx` shows the Backtest tab.
+- `/api/macrofx/backtest` returns the 6 variants: weekday −7.5%/yr Sharpe −0.30; Sunday −24.9%/yr Sharpe −1.34; no costs −6.5%/yr Sharpe −0.24; buffer −7.2%/yr; stop −7.6%/yr; buffer+stop −7.1%/yr. Data 1999-01-04 to 2026-10-09, 1,397 rebalances.
+- `/api/macrofx/doc/backtest` renders the report.
+**Log fix:** the changelog entry for this work had no "MacroFX" in its title, so the dashboard's Changelog tab filtered it out. Retitled, and a dedicated "backtest published" changelog entry added.
+
 ### 2026-10-14 — Merged to main; Dashboard switched to main; executor live
 
 **Agent:** Claude
