@@ -11,7 +11,7 @@ import pandas as pd
 from fastapi import APIRouter, HTTPException, Body, Header
 from fastapi.responses import PlainTextResponse
 
-from macrofx_engine import build_snapshot, choose_targets
+from macrofx_engine import build_snapshot, choose_targets, pair_scores
 from macrofx_feedback import (
     ensure_feedback_schema,
     upsert_daily_equity,
@@ -120,6 +120,8 @@ CREATE TABLE IF NOT EXISTS macrofx_reconciliation (
 );
 ALTER TABLE macrofx_weekly_runs
     ADD COLUMN IF NOT EXISTS available_pairs_json JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE macrofx_weekly_runs
+    ADD COLUMN IF NOT EXISTS pair_ranking_json JSONB;
 """
 
 def _verify(key: str):
@@ -195,6 +197,15 @@ async def positions_csv(account_id: str, body: str = Body(default="", media_type
         if len(p) >= 10:
             rows.append(p[:10])
     async with pool.acquire() as conn:
+        # Atomic latest complete snapshot, including empty-position uploads.
+        await conn.execute("""CREATE TABLE IF NOT EXISTS macrofx_v2_position_snapshots (
+            account_id TEXT PRIMARY KEY, captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            positions_json JSONB NOT NULL)""")
+        await conn.execute("""INSERT INTO macrofx_v2_position_snapshots(account_id,captured_at,positions_json)
+            VALUES($1,NOW(),$2::jsonb) ON CONFLICT(account_id) DO UPDATE SET
+            captured_at=NOW(),positions_json=EXCLUDED.positions_json""", account_id,
+            json.dumps([{"symbol":p[0],"ticket":int(_num(p[1],0)),"side":p[2],
+                         "lots":_num(p[3]),"magic":int(_num(p[9],0))} for p in rows]))
         for p in rows:
             await conn.execute(
                 "INSERT INTO macrofx_positions(account_id,symbol,ticket,side,lots,open_price,current_price,pnl,swap,commission,magic) "
@@ -304,6 +315,8 @@ async def run_weekly_analysis(force: bool = False):
     strongest = str(snapshot.iloc[0]["currency"]) if not snapshot.empty else None
     weakest = str(snapshot.iloc[-1]["currency"]) if not snapshot.empty else None
     snapshot_records = json.loads(snapshot.to_json(orient="records"))
+    ranking = pair_scores(snapshot, available)
+    ranking_records = json.loads(ranking.to_json(orient="records")) if not ranking.empty else []
     target_records = [t.__dict__ for t in targets]
 
     lines = [
@@ -370,11 +383,11 @@ async def run_weekly_analysis(force: bool = False):
             run_id = await conn.fetchval(
                 "INSERT INTO macrofx_weekly_runs("
                 "week_ending,strategy_version,strongest_currency,weakest_currency,"
-                "snapshot_json,targets_json,report_markdown,available_pairs_json) "
-                "VALUES($1,'macrofx-v1.1',$2,$3,$4::jsonb,$5::jsonb,$6,$7::jsonb) RETURNING id",
+                "snapshot_json,targets_json,report_markdown,available_pairs_json,pair_ranking_json) "
+                "VALUES($1,'macrofx-v1.1',$2,$3,$4::jsonb,$5::jsonb,$6,$7::jsonb,$8::jsonb) RETURNING id",
                 week_ending, strongest, weakest,
                 json.dumps(snapshot_records), json.dumps(target_records), report,
-                json.dumps(sorted(available))
+                json.dumps(sorted(available)), json.dumps(ranking_records)
             )
             await conn.execute("UPDATE macrofx_targets SET active=FALSE WHERE active=TRUE")
             for t in target_records:

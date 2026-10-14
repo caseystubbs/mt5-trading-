@@ -1,4 +1,207 @@
+### 2026-10-14 — Weekly approval queue, Monday execution, complete records, backtest
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Requested by:** Casey — "do all 4": (1) approval queue + Monday execution + records, (2) backtest, (3) hold strategy changes, (4) housekeeping.
+**Files:** `macrofx_proposals.py` (new), `macrofx_control_v2.py`, `macrofx.py`, `macrofx_engine.py` (`snapshot_from_factors` split out; identical maths), `macrofx_dashboard.py`, `static/macrofx_dashboard.html`, `main.py`, `scripts/backtest_macrofx.py` (new), `docs/backtest/results.json` + `REPORT.md` (new), `docs/MACROFX_RULES.md`, `docs/MACROFX_UPGRADES.md`, `tests/test_proposals.py` (new, 12 tests), `tests/conftest.py`, `tests/app_under_test.py`.
+
+**1. Weekly plan → approval → Monday execution** (`macrofx_proposals.py`)
+- An executor loop runs inside the Dashboard service (every 30 s, Postgres advisory lock, single runner). After each weekly run it builds a plan from the EA's latest position snapshot: closes first, then opens, 2-position cap. Status is NO_CHANGES when what's held already matches.
+- Nothing trades until approved. Approve / Reject / Cancel / Rebuild are on the dashboard (This Week tab) and need `MACROFX_ADMIN_KEY`. The key is held only in page memory.
+- Approved plans run from Monday 04:00 ET (DST-aware), only Mon–Fri 04:00–16:00 ET, one step at a time through the normal v2 command path (claim token, EA checks).
+- Opens run with a 30-point spread cap; a spread block retries hourly, up to 8 times.
+- A command not claimed within 5 min is cancelled and resent (up to 4 tries).
+- Claimed but not acknowledged after 3 min → NEEDS_REVIEW; never retried. The same applies to `local_safety_block` and broker errors.
+- Revalidated before every step: fresh heartbeat (≤3 min), demo, EA v2.x; closes skip tickets already closed; opens skip pairs already held. A position closed by hand is never reopened that week.
+- Remote control is on only while a step is in flight and switched off at every terminal state.
+- Older unstarted plans are superseded by a newer run; unapproved plans expire after 7 days.
+
+**2. Complete records**
+- Commands carry `signal_score`, `strategy_version`, `proposal_id`.
+- On ACK the matching fill (posted by the EA just before the ack) is tagged; plan trades are labelled `target_open` / `target_removed`, so the analysis counts them as model trades.
+- Weekly runs save the full 28-pair ranking (`pair_ranking_json`); this applies to the weekly service after the merge to main.
+
+**3. Backtest** (`scripts/backtest_macrofx.py`)
+- Data: Fed H.10 daily rates (datasets/exchange-rates on GitHub), 1999-01-04 to 2026-10-09, 28 crosses built from 7 USD rates.
+- Uses the live engine functions. The live path (520 calendar days of closes) and the backtest path (factor slice) were verified identical to ~1e-14 on 3 dates, with identical targets.
+- 1,397 weekly rebalances, 2000–2026; each position at 1× equity notional.
+- Results:
+  - v1.1 with weekday costs (1 pip/side): −7.5%/yr, Sharpe −0.30, max DD −89%, t −1.55.
+  - Before costs: −6.5%/yr.
+  - Sunday-reopen costs (20 pips/side): −24.9%/yr.
+  - Rotation buffer 0.25: −7.2%/yr (trades 57 → 31/yr). Volatility stop 2×: −7.6%/yr.
+  - Both halves negative (2000–12 −7.2%, 2013–26 −7.7%).
+  - v1.1 beat 17% of 30 random-pair runs.
+- Independent recomputation agrees (gross Sharpe −0.25). Single-horizon checks (1/3/6/12 months) all have Sharpe ≤ 0.
+- Swap not modelled. Conclusion: **no evidence of an edge**; keep demo-only and research a different signal (Upgrades #11).
+
+**Dashboard:** plan panel on This Week, new Backtest tab (growth-of-$1 log chart, variants, year by year, report).
+**Verification:** `pytest` 48 passed / 0 failed. Twelve new tests run a simulated EA end to end: full rotation with approval, no approval no trades, wrong/missing key 403, outside window, before schedule, spread retry hourly with no immediate resend, claimed-but-unacked → NEEDS_REVIEW with no retry, manual close respected and not reopened, reject/cancel, stale EA blocks, public endpoint clean. Local render checked with Playwright.
+**Holds (item 3):** no signal changes, size increase or live account; recorded in Upgrades #7/#8/#10/#11.
+
+### 2026-10-14 — MacroFX Batch 2: terminal restart + network outage PASSED (17/17)
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Run:** `tests/live_restart_tests.py`, runner deployment `eec8e768-d8e1-490b-a111-7760abe331af` (redeploy of the `668de0b` build). Casey performed the terminal actions. An earlier attempt on 2026-10-13 timed out because no restart happened within the hour.
+**Restart:** last heartbeat 17:46:32Z (MT4 closed). Runner enabled remote control with entries paused and queued PAUSE_ENTRIES `243c4554-cc6b-400d-9a15-98da9b7f0da9` at 17:48:14Z (expired 17:53:14Z). MT4 back online at 17:56:25Z. Over 3 poll cycles the expired command stayed PENDING and was never claimed; positions unchanged (EURAUD #8992699, NZDUSD #8992632); remote control restored to disabled.
+**Network outage:** Casey disconnected the PC. Last heartbeat 18:03:25Z, next 18:11:25Z (480 s outage). The EA reconnected by itself; heartbeats and position snapshots resumed; positions unchanged; no commands created or executed.
+**Correction:** In chat I first said heartbeats never stopped. That was a misread of an HTTP log window that ended at the outage start; the runner's own record shows the outage.
+**Remaining untested on the terminal:** drawdown kill switch (needs Casey to change `MaxDrawdownPct`, or Upgrades #5). No orders were placed in this batch.
+
+### 2026-10-14 — MacroFX dashboard: Feedback & analysis tab
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Requested by:** Casey — "what about feedback and analysis of the system".
+**Files:** `macrofx_analysis.py` (new), `macrofx_dashboard.py`, `static/macrofx_dashboard.html`, `tests/test_macrofx_v2.py` (+3 tests).
+**What it does:** New **Feedback** tab that evaluates the system from its own records on every page load:
+- Sample-size gate: model-closed trades vs. 30 needed before judging the signal.
+- Trades split by origin, **model** vs **test/manual**, so testing closes don't distort the signal's record.
+- Execution cost by window (Sunday reopen vs weekday): average/max spread and estimated USD spread cost per fill, converted per quote currency from the latest closes, with a sanity guard against bad prices.
+- Cost breakdown (price P&L, swap, commission, net, estimated spread inside P&L); week-to-week target turnover; max daily drawdown.
+- Generated findings (Problem / Watch / Note) with evidence; the four research questions from the weekly review, with data-readiness status; the latest official weekly review rendered in full.
+**Verification:** `pytest` 36 passed / 0 failed (+3: spread-cost conversion incl. JPY/CHF/AUD quotes and bad-price guard, ET Sunday window, model-vs-test split + turnover + findings). Local render checked with Playwright. Against realistic prices the estimate gives $12.91 spread over 6 Sunday-reopen fills vs $0.24 over 4 weekday fills, in line with the earlier manual estimate (~$12).
+**Deployment:** Dashboard `d2a9739e-23bd-420d-a918-d298ab6b16ea`, live ~2026-10-14 17:25 UTC. Production analysis: 3 model trades (net −$5.75, PF 0.50) vs 5 closed overall (+$4.41); Sunday reopen avg spread 228 pts vs 7 weekday (31×), est. $12.85 vs $0.24; average target change 1.5 of 2 per week; closed trades gave back $6.10 on average from their best point (model trades: AUDCHF +1.65→−11.06, EURJPY +12.93→+5.85, USDCHF +5.72→−0.54).
+**No writes, no commands, no strategy changes.**
+
+### 2026-10-14 — MacroFX dashboard (/macrofx)
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Requested by:** Casey — dashboard in the Railway service tracking history, status, upcoming weekly trades and swap, the changelog, potential upgrades, and plain-language rules.
+**Files:** `macrofx_dashboard.py` (new), `static/macrofx_dashboard.html` (new), `docs/MACROFX_RULES.md` (new), `docs/MACROFX_UPGRADES.md` (new), `main.py` (router registered), `requirements.txt` (+`markdown==3.7`), `tests/app_under_test.py`, `tests/test_macrofx_v2.py` (+5 tests), `tests/export_feedback.py` (read-only history export, not run), `.gitignore`.
+**What it does:** Read-only page at `/macrofx` with six tabs:
+- **Overview:** EA status, balance/equity, since-start P&L, swap, open positions with swap per day, daily equity chart.
+- **This Week:** current targets, targets vs held (close/open/hold), next run time, a live "if the model ran now" ranking, and the last official currency ranking.
+- **History:** trades with MAE/MFE, weekly runs, fills, remote commands.
+- **How It Works:** rules. **Changelog:** MacroFX sections of `changelog.md` and `DEV_LOG.md`. **Upgrades:** proposed upgrade list.
+
+Data API: `GET /api/macrofx/dashboard-data`. Docs: `GET /api/macrofx/doc/{rules|upgrades|changelog|devlog}` (markdown, or `?format=html`). No writes, no commands, claim tokens never returned. Markdown is rendered server-side, so the page has no script CDN dependency.
+**Verification:** `pytest` 33 passed / 0 failed (28 existing + 5 dashboard: page/data keys, no claim tokens, docs + path safety, read-only, next-run schedule). Local render checked with Playwright in light, dark and 390px mobile against seeded data; fixed realized-commission double count, chart label overlap and log list rendering found in those checks.
+**Deployment:** Dashboard deployment `22e7b502-27a1-4842-aba3-857f1ddb274a` (commit `7413025`) live 2026-10-14 ~17:06 UTC. Production check: `/macrofx` 200, data API 200 with real account data (EA v2.02 online, 2 positions matching week-ending-10-09 targets, 7 trades, 12 fills, 3 weekly runs, 19 equity days), no claim tokens in output; EA heartbeat endpoint still 200.
+**Access note:** The page is public and read-only, like the existing `/` dashboard and `/api/macrofx/status`. It shows the demo account's balance and positions. Add a password if that should change.
+**Not done:** Swap *rates* (expected nightly swap) need the EA to upload them (Upgrades #4); the dashboard currently shows swap already charged. Weekly target execution is still manual (Upgrades #1).
+
+### 2026-10-13 — MacroFX Batch 1: EA entry guards on the real terminal PASSED (14/14)
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Authorization:** Casey 15:31 ET. Runner deployment `0def482b-ee28-4926-8d02-361974054388` (commit `b1a93b1`, `tests/live_guard_tests.py`). An earlier deployment `9c5ddf48…` stalled in Railway's builder and was removed without running.
+| Step | Command | Result |
+|---|---|---|
+| Free slot: close EURAUD SHORT #8950352 | `2dd9868a-9ccf-45a2-b827-9b4e0f47774e` | ACKED `closed` — fill 1.60348, spread 9, slip 0, P&L +11.21, comm -0.06 |
+| Open EURAUD while paused | `0f9677a3-6008-4592-b2e4-7a6a2fe098c0` | FAILED `entries_paused` |
+| Open EURAUD with spread limit 0 | `cf083b3b-e5b8-4239-ae4e-404bb8788b33` | FAILED `spread_or_quote_block` |
+| Duplicate NZDUSD open (slot free) | `cb47cbae-5703-4a10-8a78-fdce1b51c4fa` | FAILED `pair_already_open` |
+| Unknown symbol ABCDEF | `1b69568d-75cd-4559-9e8d-c138853161eb` | FAILED `pair_or_lot_limit` |
+| Restore EURAUD SHORT 0.01 | `db1f6c03-4159-4e8a-b29b-b2a5489ecd17` | ACKED `opened_ticket_8992699` — fill 1.6036, spread 7, slip 1, comm -0.06 |
+**Positions after:** EURAUD SHORT 0.01 #8992699, NZDUSD SHORT 0.01 #8992632 (bridge-owned, match week 7). Remote control restored to disabled; nothing left CLAIMED.
+**Still untested:** broker lot-step rejection (server allows only 0.01, so unreachable remotely), drawdown kill switch, restart, network outage.
+
+### 2026-10-13 — MacroFX Phase D demo execution PASSED (22/22)
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Authorization:** Casey 14:58 ET; EA input `EnableTrading=true` set by Casey 15:13 ET.
+**Run:** `tests/live_demo_trade.py`, runner deployment `93f273da-a5bd-479e-8445-ee0170562410` (redeploy of commit `b280833`). Demo account 1041307, EA v2.02.
+| Step | Command | Claimed / Acked (UTC) | Result | Broker fill |
+|---|---|---|---|---|
+| Close NZDUSD SHORT #8984249 | `c65a4e33-b217-41e7-9f9f-c4bd54fc310e` CLOSE_TICKET | 19:16:34.77 / 19:16:35.09 | ACKED `closed` | 0.56148 req/fill, spread 7 pts, slip 0, P&L -1.13, comm -0.03 |
+| Reopen NZDUSD SHORT 0.01 | `fc9f8ab7-039a-42d6-a39a-440f29a28367` OPEN_SHORT | 19:18:34.74 / 19:18:35.04 | ACKED `opened_ticket_8992632` | 0.56136 req/fill, spread 6 pts, slip 0, comm -0.03 |
+| Duplicate open NZDUSD | `5ae538f7-7e66-4989-aaae-7b2a704e27cc` OPEN_SHORT | 19:20:34.79 / 19:20:34.84 | FAILED `position_limit` | none |
+Railway snapshot confirmed close (ticket absent), new ticket 8992632 NZDUSD SHORT 0.01 magic 26092601, and exactly 2 bridge positions after the duplicate attempt. Both fills stored in `macrofx_fills`. Re-claim of executed commands rejected (409). Remote control restored to disabled; no command left CLAIMED.
+**Open demo positions now:** NZDUSD SHORT 0.01 #8992632, EURAUD SHORT 0.01 #8950352 (week 7 targets, matching). No unintended test positions.
+**Limits of this evidence:** the duplicate was stopped by the position limit; the separate pair-already-open guard was not reached. Spread/lot-step rejection, drawdown kill switch, restart and network-outage behavior remain code-reviewed only. EA `EnableTrading` is now ON (it only acts on claimed remote commands; remote control is disabled). Branch not merged.
+
+### 2026-10-13 — MacroFX Phase D attempt 1: blocked by EA local safety (expected)
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Authorization:** Casey, 14:58 ET: "lets just test it now" (close one bridge position, reopen same pair/direction at 0.01, test duplicate-open guard).
+**Run:** `tests/live_demo_trade.py`, runner deployment `acc18125-c49c-4c77-be2c-ee55974c560c`, commit `b280833`.
+**Result:** CLOSE_TICKET `5d65da8f-30e1-42b9-8ad6-c4d7b4bfffca` for NZDUSD #8984249 was claimed by the terminal (19:00:54Z) and acknowledged `FAILED` / `local_safety_block`. This is the EA refusing because the local `EnableTrading` input is OFF (or the drawdown kill switch; heartbeat equity 1004.39 vs balance 994.25 makes the kill switch unlikely). The script aborted before any open; remote control restored to disabled; no command left CLAIMED. **No orders placed or closed.**
+**Evidence gained:** trading-disabled-by-default enforcement verified on the real terminal for a CLOSE command.
+**Next:** Casey sets EA input `EnableTrading=true`; rerun the same script. Note: `EnableTrading=true` alone does nothing — v2.02 executes only claimed remote commands, and remote control is disabled.
+
+### 2026-10-13 — MacroFX v2.02 real-terminal PAUSE_ENTRIES lifecycle verified
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Files changed:** `tests/live_real_pause.py` (new), `DEV_LOG.md`, `changelog.md`.
+**Precondition:** Casey compiled and attached EA v2.02; heartbeat 18:46:59Z shows `MacroFX-MT4-Bridge-2.02-claimtoken`, demo, account 1041307.
+**Test:** Run inside Railway (`macrofx-verify-runner`, deployment `252894a7-285f-4a86-89f1-4f95e25f4cbf`, commit `11e48f5`). Remote control enabled with `pause_entries=TRUE` for the whole test; only a PAUSE_ENTRIES command created; settings restored afterwards.
+**Result: 13 passed / 0 failed.** Command `b861cb57-71c1-42ef-b547-e40e24dbbc9c` created 18:49:04Z, claimed by the MT4 terminal 18:49:54Z (HTTP 200, UA MetaTrader 4 Terminal/4.1492), acked 45 ms later with `ACKED`/`paused`. Not redelivered; duplicate claim 409; foreign-token ack 409; stored result unchanged. Railway HTTP logs show exactly one EA claim and one EA ack. Final state: no v2 settings row (remote control disabled by default), 0 unresolved commands.
+**Incident (no impact):** Railway created two deployments of the runner (`241a13a3-2d64-4d89-b207-7ff06b31357d` and `252894a7`). The second instance aborted at its "no unresolved commands" guard and did not create a command or cancel the first run's command; its restore wrote identical settings. Lesson: the pre-test guard is required for any runner that writes to the real account.
+**Not done:** No orders placed or closed. Phase D still needs explicit authorization and a free position slot (account holds 2 of 2: NZDUSD #8984249, EURAUD #8950352). EA-side spread/lot-step/drawdown/restart checks still code-reviewed only.
+
+### 2026-10-13 — MacroFX v2.02 verification, fixes and production backend deploy
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Files changed:** `macrofx_control_v2.py`, `mt4/FIO_MacroFX_Bridge_v2_0.mq4`, `mt4/FIO_MacroFX_Bridge_v2.mq4` (identical), `tests/conftest.py`, `tests/app_under_test.py`, `tests/test_macrofx_v2.py`, `tests/live_runner.py`, `pytest.ini`, `DEV_LOG.md`, `changelog.md`.
+
+**Bugs found**
+1. Ack had no claimant check: any instance with the EA key could ACK/FAIL a CLAIMED command (second chart could overwrite the first claimant's result). Server-side gap behind v2.01's EA-only fix.
+2. EA processed `PAUSE_ENTRIES` *after* the `EnableTrading`/kill-switch gate, so pause returned `local_safety_block` whenever trading was OFF (handoff issue C, confirmed). Pause also only lived in memory until the next poll overwrote it.
+3. No duplicate guard: multiple pending `OPEN_*` for the same pair (or `CLOSE_TICKET` for the same ticket) could be queued.
+4. `reconcile-preview` raised 500 if `macrofx_v2_position_snapshots` did not exist yet (table only created by the positions upload).
+5. v2 schema (including DROP/ADD CONSTRAINT) re-ran on every request, taking an ACCESS EXCLUSIVE lock on the command table on every EA poll. Not a correctness failure in tests, but unnecessary locking.
+
+**Fixes**
+- `/claim` returns a 32-hex `claim_token`; `/ack` requires the matching token. Token never returned in admin history.
+- Creating `PAUSE_ENTRIES` latches `pause_entries=TRUE` in settings (revision+1) immediately — fail-safe direction.
+- Duplicate pending/in-flight OPEN per pair and CLOSE per ticket rejected with 409, serialized by a per-account advisory lock.
+- Snapshot table created in v2 schema; schema applied once per process; constraint migration idempotent. Migration from the deployed schema tested: existing rows preserved.
+- EA v2.02: pause handled before trading gate (still demo-only); parses `claim_token`, sends it on ack; marker still written before execution; skips execution if token missing. Version `MacroFX-MT4-Bridge-2.02-claimtoken`.
+
+**Tests executed**
+- `python3 -m pytest -q` (isolated local PostgreSQL 16, throwaway keys). Baseline on deployed code `5c6215c`: 21 passed / 5 failed. After fixes: **28 passed / 0 failed** (auth, demo-only, stale heartbeat, defaults, validation, lifecycle, duplicate claim, 12-way concurrent claim, expiry, invalid/second-chart acks, uncertain-outcome no-redelivery, duplicate-open race, reconcile preview incl. suffixes/direction/size/magic/manual-close/duplicates/stale targets).
+- Production, authenticated, run inside Railway (`tests/live_runner.py`, service `macrofx-verify-runner` 11134cbb-ed0d-497d-b30a-f6a6dadeaa4c, deployment aadca9d8-83c5-46fc-ae29-14cb333f3855): **43 passed / 0 failed**. Write tests used synthetic account `CLAUDE-TEST-1791916862`; all synthetic rows deleted (0 remaining). Real account 1041307 read-only.
+
+**Deployment:** Dashboard deployment `c2bfad9a-3457-4533-915d-519c5de715cb` (commit `05a023f`) SUCCESS 2026-10-13T18:36Z. Post-deploy EA traffic (heartbeat, positions-csv, control-text) HTTP 200 from MT4 4.1492.
+
+**Production state observed (read-only):** 1041307 demo, EA still v2.01 (heartbeat age 31s). No v2 settings row → remote control disabled by default. 0 unresolved commands. Two bridge-owned positions open: NZDUSD SHORT 0.01 #8984249, EURAUD SHORT 0.01 #8950352; reconcile preview (weekly run 7) shows them matching targets — no close/open candidates.
+
+**Not verified / blockers**
+- EA v2.02 not compiled (no MetaEditor here) and not installed. Real-EA receipt/claim/ack (Phase B 3–5 with the terminal) requires Casey to compile and attach v2.02. The running v2.01 cannot ack under the new server (no token) — harmless while remote control is disabled.
+- Phase C EA-side controls (spread/slippage, lot step, drawdown kill, restart/network outage) are code-reviewed only, not executed.
+- Phase D not run: no authorization given, and account is already at the 2-position limit, so a new 0.01 test order would be blocked by design.
+- Weekly target → v2 command execution is not integrated (preview only), as intended.
+- No demo orders placed. No positions opened or closed. Branch not merged.
+- `macrofx-verify-runner` service left in place (deletion not approved); it is idle. Redeploying it reruns the suite.
+
+### 2026-10-13 — MacroFX v2.01 command ACK race fix
+Agent: ChatGPT. Updated both MT4 EA source variants to avoid ACKing a command already marked attempted by another chart; only successful claim owner proceeds. Bumped About version to 2.01 and heartbeat version to MacroFX-MT4-Bridge-2.01-claimfix. Source committed on development branch; MT4 compilation, local installation and broker demo command execution remain unverified. No live trades initiated.
+
 # EST Liquidity Breakout EA — Development Log
+
+## 2026-10-13 — MacroFX v2 compile-error corrections
+
+**Agent:** ChatGPT (GPT-6)
+**Evidence:** User MetaEditor screenshot reported six errors, including undeclared `spreadPoints` and invalid newline parsing. Fixed source ordering and newline delimiter in `mt4/FIO_MacroFX_Bridge_v2.mq4` (commit `4bc7853`).
+**Verification:** Static source inspection only; awaiting fresh MetaEditor compile output. **Deployment:** None; existing EA unchanged.
+
+## 2026-10-12 — MacroFX Bridge v2 EA implementation
+
+**Agent:** ChatGPT (GPT-6)
+**Files:** `mt4/FIO_MacroFX_Bridge_v2.mq4`, `macrofx_control_v2.py`, `DEV_LOG.md`, `changelog.md`.
+**Implemented:** Separate v2 MT4 source with Railway remote settings/commands, broker execution and fill reporting, hard demo and local risk limits, durable marker written before each command attempt, and MT4-compatible acknowledgement endpoint. v2 weekly target reconciliation disabled pending manual-override precedence design.
+**Evidence:** GitHub commits `4c0f555`, `6e135a6`, `43106dc`; draft PR #2.
+**Verification:** Source committed; no MetaEditor compile, integration tests or demo broker verification. Duplicate safety is fail-closed but uncertain broker outcomes need manual review.
+**Deployment:** None. Production v1.5 unchanged.
+**Status:** IN PROGRESS — not production-ready.
+
+## 2026-10-12 — MacroFX Bridge v2 development
+
+**Agent:** ChatGPT (GPT-6)
+**Status:** IN PROGRESS; not merged or deployed.
+**Files:** `macrofx_control_v2.py`, `main.py`, `changelog.md`, `DEV_LOG.md`.
+**Completed:** Added demo-only Railway control endpoints, disabled-by-default remote settings, expiring manual command queue, acknowledgements, and separate administrator authentication. Registered router in the FastAPI application.
+**Commits:** `95f9a28`, `2e3648d`, `28899fc`; draft PR #2: https://github.com/caseystubbs/mt5-trading-/pull/2.
+**Verification:** Repository source reviewed; GitHub commits confirmed. No automated integration tests, MT4 compilation, broker validation or deployment performed.
+**Outstanding:** MT4 v2 execution agent, crash-safe deduplication, manual override precedence, integration tests, demo validation and deployment checklist.
+**Trading:** Existing weekly strategy, EA v1.5 and production settings unchanged.
 
 ## 2026-10-08 — Permanent evidence-based agent reporting instructions
 
@@ -556,3 +759,37 @@ Levels serve two distinct purposes:
 9. **Volatility filter** — skip low-ATR days where breakouts fail more often
 10. **GitHub auto-push** — nightly script pushes journals + daily logs to repo
 11. **Improve stop logic** — consider ATR-based stops or level-based stops instead of candle low
+
+### 2026-10-13 — MacroFX v2 weekly-execution safety audit (not enabled)
+
+**Agent:** ChatGPT
+**Verified:** Railway Dashboard v2 commit dfbf76d deployed SUCCESS; MT4 demo heartbeats, position uploads and v2 control polls returned HTTP 200 repeatedly through 14:34 UTC. MacroFX Weekly service remains on main and the 2026-10-09 scheduled run produced SHORT EURAUD and SHORT NZDUSD at 0.01 lot each.
+**Execution evidence limit:** HTTP 200 on positions-csv confirms uploads, NOT the individual live broker positions; latest account position rows and broker tickets were not independently read. No v2 /fill requests appeared in the checked recent HTTP window.
+**Blocking defects:** (1) MT4 v2 OnTimer intentionally does not call PollTargets, so Friday signals do not currently drive Sunday execution; (2) multiple MT4 chart instances poll the same pending commands, while GlobalVariableCheck followed by GlobalVariableSet is not atomic; (3) remote settings remain disabled/paused, and no admin key is configured on the Dashboard; (4) changed MT4 source requires local MetaEditor compilation and demo broker tests before use.
+**Decision:** Keep remote execution disabled; do not claim completed weekly reconciliation, command execution, or end-to-end validation. Implement server-side single-consumer command claiming and durable target-to-command reconciliation with manual-close precedence; verify actual positions and broker fills, then perform demo-only pause/open/close/restart tests. Do not change weekly signal logic or 2-position/0.01-lot caps.
+
+### 2026-10-13 — v2 single-consumer claim and reconciliation preview (source only)
+
+**Agent:** ChatGPT. **Branch:** feature/macrofx-bridge-v2-remote-control (draft PR #2). **No new Railway deployment and no broker actions.**
+- Added PostgreSQL atomic PENDING→CLAIMED command transition; ACK now requires CLAIMED, and uncertain claimed commands are not automatically retried. The MT4 v2 source now requires HTTP 200 from /api/macrofx/v2/claim before a broker action, protecting against multiple chart instances consuming one instruction.
+- Persisted a full latest-position snapshot on every EA position upload, including empty snapshots, so a future reconciliation does not mistake historical positions for currently open trades.
+- Added authenticated read-only /api/macrofx/v2/admin/reconcile-preview using a fresh (<2 minute) snapshot and current weekly targets, with close-before-open ordering and explicit operator review to preserve manual-close precedence.
+- **Not yet complete:** no automated Sunday reconciliation scheduler, no enqueue/apply step, no broker position verification, no Python integration tests, no MetaEditor compile of updated EA, and no demo execution tests. Trading stays disabled/paused. The live Dashboard remains pinned to dfbf76d, not these branch commits. EA source changes require manual recompile and reinstall.
+
+### 2026-10-13 — Deployment request: MacroFX v2 safety backend
+
+**Agent:** ChatGPT (GPT-6). Requested Railway Dashboard deployment of source changes: atomic PENDING→CLAIMED server command lock, latest complete position snapshots, and read-only weekly reconciliation preview. Deployment is limited to the Dashboard service on the v2 feature branch; weekly strategy service and MT4 installed binary are unchanged. Trading remains disabled/paused by default, with no MACROFX_ADMIN_KEY configured. Nine unrelated staged Railway changes (including service deletion) must NOT be accepted. Runtime deployment and HTTP checks recorded in a subsequent entry.
+
+**Deployment evidence update (2026-10-13):** Railway Dashboard deployment ID `3d473bbe-8eeb-41ec-8e27-7012b9f5f246` was created for pinned commit `5f6bca4f20ffb555b90b0695626d09b20e40eaae`; Railway reported BUILDING at the last check, not SUCCESS. Prior `dfbf76d` deployment was still SUCCESS. No new-code runtime HTTP verification yet. Do not claim deployment completed until SUCCESS and endpoint checks.
+
+### 2026-10-13 — Production 500 migration hotfix
+
+**Agent:** ChatGPT (GPT-6). After deployment 3d473bbe reported SUCCESS, observed HTTP 500 on `/api/macrofx/v2/control-text` while heartbeat and positions-csv remained HTTP 200. Railway runtime traceback: `asyncpg.exceptions.PostgresSyntaxError: syntax error at or near "$"` in `macrofx_control_v2.py` SCHEMA. Replaced invalid `DO $ ... END $;` with standard PostgreSQL constraint DROP IF EXISTS / ADD statements; verified updated source blob SHA 891eda84. Hotfix commit `a16ac2fdaf666417b6c4e6314e6ada3be896c651` submitted to Railway Dashboard as pinned source, deployment `2b6e52f6-78be-4965-92f3-3b7499d2a100`. Verification of success and HTTP 200 still pending. Automatic trading remains disabled; MT4 binary unchanged.
+
+### 2026-10-13 — Production hotfix verified
+
+**Agent:** ChatGPT (GPT-6). Railway Dashboard deployment `2b6e52f6-78be-4965-92f3-3b7499d2a100` (commit `a16ac2fdaf666417b6c4e6314e6ada3be896c651`) reported SUCCESS at 15:09:14 UTC. HTTP logs after rollout through 15:13:13 UTC show repeated 200 responses for `/api/macrofx/heartbeat`, `/api/macrofx/positions-csv`, and `/api/macrofx/v2/control-text`. Earlier 500 errors occurred before rollout. SQL migration outage resolved. This verifies connectivity, not broker execution; remote trading remains disabled pending EA compilation and demo trade tests.
+
+### 2026-10-13 — MT4 EA visible version label
+
+**Agent:** ChatGPT (GPT-6). Added MQL4 `#property version "2.0"` and About-tab description to `mt4/FIO_MacroFX_Bridge_v2.mq4` (commit `d72faee`). Created a version-labeled copy `mt4/FIO_MacroFX_Bridge_v2_0.mq4` (commit `de586fe`) so the EA filename itself displays v2_0 in the MT4 expert properties title. Not compiled or installed; no backend redeployment and no trading actions.

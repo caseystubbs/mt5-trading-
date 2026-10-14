@@ -1,3 +1,65 @@
+### 2026-10-14 — Weekly approval queue, Monday execution, backtest
+**Agent:** Claude (Claude Opus 5.5)
+- Weekly plans are built automatically, approved on the dashboard, and run Monday from 4 AM ET (weekdays only, 30-point spread cap, never retries an uncertain order).
+- Every command and fill now carries signal score, strategy version and plan; each weekly run saves the full pair ranking.
+- Backtest 2000–2026 with the live engine: v1.1 shows no edge (−7.5%/yr with weekday costs, −24.9%/yr at Sunday-reopen costs). New Backtest tab. Demo only; new-signal research is next.
+- 48/48 tests pass.
+
+### 2026-10-14 — MacroFX restart and network-outage tests passed
+**Agent:** Claude (Claude Opus 5.5)
+- An expired command is never executed after an MT4 restart; the EA reconnects by itself after an 8-minute internet outage with positions unchanged. 17/17 checks. No orders.
+
+### 2026-10-14 — MacroFX dashboard: Feedback tab
+**Agent:** Claude (Claude Opus 5.5)
+- Automatic system analysis: sample-size gate, model vs test trades, Sunday-vs-weekday spread cost, cost breakdown, turnover, findings, research-question status, full weekly review. 36/36 tests pass.
+
+### 2026-10-14 — MacroFX dashboard
+**Agent:** Claude (Claude Opus 5.5)
+- New read-only dashboard at `/macrofx`: Overview, This Week, History, How It Works, Changelog, Upgrades tabs.
+- Plain-language rules (`docs/MACROFX_RULES.md`) and upgrade list (`docs/MACROFX_UPGRADES.md`).
+- 33/33 backend tests pass.
+
+### 2026-10-13 — MacroFX v2.02 demo order execution verified
+**Agent:** Claude (Claude Opus 5.5)
+- Remote CLOSE (#8984249) and OPEN_SHORT NZDUSD 0.01 (#8992632) executed on demo 1041307 via the full command lifecycle; fills and snapshots recorded; duplicate open refused by the EA (position_limit). 22/22 checks. Remote control left disabled.
+
+### 2026-10-13 — MacroFX v2.02 real-terminal command lifecycle verified
+**Agent:** Claude (Claude Opus 5.5)
+- EA v2.02 on demo 1041307 received, claimed and acknowledged a PAUSE_ENTRIES command (command `b861cb57…`, 13/13 checks). Duplicate claim and foreign ack rejected. Remote control restored to disabled. No orders.
+
+### 2026-10-13 — MacroFX Bridge v2.02 (backend deployed; EA pending install)
+**Agent:** Claude (Claude Opus 5.5)
+- Claim token: only the winning chart instance can acknowledge a command.
+- `PAUSE_ENTRIES` latches server pause and works with local trading OFF (EA).
+- Duplicate pending open-per-pair / close-per-ticket rejected.
+- Reconcile preview no longer 500s without a snapshot table; schema applied once per process.
+- Added `tests/` (28 local tests pass) and `tests/live_runner.py` (43/43 pass against production via Railway, synthetic account, cleaned up).
+- Deployed Dashboard `c2bfad9a` (commit `05a023f`). EA v2.02 needs MetaEditor compile + attach. No demo orders placed.
+
+### 2026-10-13 — MacroFX Bridge v2.01
+- Fixed duplicate-chart local marker behavior: no erroneous FAILED ACK from a non-claimant.
+- Bumped EA About/version identifier to 2.01 / MacroFX-MT4-Bridge-2.01-claimfix.
+- Requires user-side MetaEditor compile and MT4 attachment; execution unverified.
+
+## 2026-10-13 — MacroFX v2 MetaEditor compile fixes
+
+**Agent:** ChatGPT (GPT-6). Corrected use of `spreadPoints` before declaration and replaced invalid newline delimiter in `StringSplit` with integer character code 10. Commit `4bc7853`. User screenshot reported 6 compiler errors; fresh compilation and zero-error confirmation are pending. Development branch only; no deployment.
+
+## 2026-10-12 — MacroFX MT4 Bridge v2 source
+
+**Agent:** ChatGPT (GPT-6). Added `mt4/FIO_MacroFX_Bridge_v2.mq4` with Railway v2 polling, remote open/close/pause command handling, hard demo/local risk checks, persistent pre-execution deduplication marker and authenticated command acknowledgement. Adapted `macrofx_control_v2.py` acknowledgement endpoint for MT4 query parameters. Disabled v2 weekly auto-reconciliation pending explicit override semantics so remote closes are not immediately undone. Commits `4c0f555`, `6e135a6`, `43106dc`. **Not compiled, tested, merged or deployed.** Manual review required for uncertain command outcomes. Existing EA v1.5 remains untouched.
+
+## 2026-10-12
+
+### [wip] MacroFX Bridge v2 Railway control foundation
+
+**Agent:** ChatGPT (GPT-6)
+**Changes:** Added `macrofx_control_v2.py` and registered its router in `main.py` on the development branch. The new API provides demo-only remote settings, an expiring command queue, acknowledgements and a separate admin key. Existing MT4 v1.5 and strategy rules were not modified.
+**Evidence:** Commits `95f9a28` and `2e3648d`; draft PR #2.
+**Verification:** GitHub commits verified; no automated tests, MetaEditor compilation or demo execution yet.
+**Deployment:** Not merged or deployed. No broker orders or production configuration changes.
+**Remaining:** MT4 v2 client, deduplication, override reconciliation, tests and demo validation.
+
 ## 2026-10-08
 
 ### [docs] Persist evidence-based agent reporting rules
@@ -214,3 +276,19 @@ S&P 500 breakout trading system. Trades PDH/PDL, premarket, and opening range le
 ### [fix] Symbol initialization for demo brokers
 
 SymbolSelect fails on some demo accounts. EA now validates via bid price check instead of blocking on init failure.
+
+## 2026-10-13 — MacroFX v2 backend safety improvements (deployment requested)
+
+**Agent:** ChatGPT (GPT-6). Added atomic server-side command claiming before MT4 broker actions; retained fail-closed/no-retry behavior. Added complete latest position snapshots and authenticated, read-only weekly target reconciliation preview. Changes are on draft feature branch; Railway Dashboard deployment requested. No weekly execution scheduler or automatic trading enabled; MT4 source must be compiled and installed separately. Unrelated Railway staged changes are intentionally excluded.
+
+**Deployment tracking:** Railway Dashboard deployment `3d473bbe-8eeb-41ec-8e27-7012b9f5f246` triggered for `5f6bca4`; BUILDING at last check, pending verification. The existing MT4 EA and automatic trading remain unchanged.
+
+## 2026-10-13 — MacroFX v2 production migration hotfix
+
+**Agent:** ChatGPT (GPT-6). Fixed invalid PostgreSQL anonymous block syntax causing v2 control-text HTTP 500 after the preceding Dashboard deployment. Replaced it with ordinary DROP CONSTRAINT IF EXISTS / ADD CONSTRAINT SQL. Hotfix commit `a16ac2f` submitted to Railway Dashboard; deploy ID `2b6e52f6-78be-4965-92f3-3b7499d2a100`, pending runtime verification. No trading enablement or MT4 installation.
+
+**Verified production:** Railway Dashboard deployment `2b6e52f6-78be-4965-92f3-3b7499d2a100` SUCCESS. Heartbeat, positions-csv and v2 control-text all returned repeated HTTP 200 after rollout (through 15:13:13 UTC). No automatic trading enabled; EA execution remains untested.
+
+## 2026-10-13 — Visible MT4 EA version
+
+**Agent:** ChatGPT (GPT-6). Added MQL4 About-tab version and description, and created `mt4/FIO_MacroFX_Bridge_v2_0.mq4` to display the version in the EA filename/title. Source-only; requires user MetaEditor compilation and installation. No broker actions.
