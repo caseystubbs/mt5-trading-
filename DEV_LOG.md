@@ -11,6 +11,7 @@
 - Cost breakdown (price P&L, swap, commission, net, estimated spread inside P&L); week-to-week target turnover; max daily drawdown.
 - Generated findings (Problem / Watch / Note) with evidence; the four research questions from the weekly review, with data-readiness status; the latest official weekly review rendered in full.
 **Verification:** `pytest` 36 passed / 0 failed (+3: spread-cost conversion incl. JPY/CHF/AUD quotes and bad-price guard, ET Sunday window, model-vs-test split + turnover + findings). Local render checked with Playwright. Against realistic prices the estimate gives $12.91 spread over 6 Sunday-reopen fills vs $0.24 over 4 weekday fills, in line with the earlier manual estimate (~$12).
+**Deployment:** Dashboard `d2a9739e-23bd-420d-a918-d298ab6b16ea`, live ~2026-10-14 17:25 UTC. Production analysis: 3 model trades (net −$5.75, PF 0.50) vs 5 closed overall (+$4.41); Sunday reopen avg spread 228 pts vs 7 weekday (31×), est. $12.85 vs $0.24; average target change 1.5 of 2 per week; closed trades gave back $6.10 on average from their best point (model trades: AUDCHF +1.65→−11.06, EURJPY +12.93→+5.85, USDCHF +5.72→−0.54).
 **No writes, no commands, no strategy changes.**
 
 ### 2026-10-14 — MacroFX dashboard (/macrofx)
