@@ -1,3 +1,7 @@
+### 2026-10-14 — MacroFX restart and network-outage tests passed
+**Agent:** Claude (Claude Opus 5.5)
+- An expired command is never executed after an MT4 restart; the EA reconnects by itself after an 8-minute internet outage with positions unchanged. 17/17 checks. No orders.
+
 ### 2026-10-14 — MacroFX dashboard: Feedback tab
 **Agent:** Claude (Claude Opus 5.5)
 - Automatic system analysis: sample-size gate, model vs test trades, Sunday-vs-weekday spread cost, cost breakdown, turnover, findings, research-question status, full weekly review. 36/36 tests pass.

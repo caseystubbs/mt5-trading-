@@ -1,3 +1,13 @@
+### 2026-10-14 — MacroFX Batch 2: terminal restart + network outage PASSED (17/17)
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Run:** `tests/live_restart_tests.py`, runner deployment `eec8e768-d8e1-490b-a111-7760abe331af` (redeploy of the `668de0b` build). Casey performed the terminal actions. An earlier attempt on 2026-10-13 timed out because no restart happened within the hour.
+**Restart:** last heartbeat 17:46:32Z (MT4 closed). Runner enabled remote control with entries paused and queued PAUSE_ENTRIES `243c4554-cc6b-400d-9a15-98da9b7f0da9` at 17:48:14Z (expired 17:53:14Z). MT4 back online at 17:56:25Z. Over 3 poll cycles the expired command stayed PENDING and was never claimed; positions unchanged (EURAUD #8992699, NZDUSD #8992632); remote control restored to disabled.
+**Network outage:** Casey disconnected the PC. Last heartbeat 18:03:25Z, next 18:11:25Z (480 s outage). The EA reconnected by itself; heartbeats and position snapshots resumed; positions unchanged; no commands created or executed.
+**Correction:** In chat I first said heartbeats never stopped. That was a misread of an HTTP log window that ended at the outage start; the runner's own record shows the outage.
+**Remaining untested on the terminal:** drawdown kill switch (needs Casey to change `MaxDrawdownPct`, or Upgrades #5). No orders were placed in this batch.
+
 ### 2026-10-14 — MacroFX dashboard: Feedback & analysis tab
 
 **Agent:** Claude
