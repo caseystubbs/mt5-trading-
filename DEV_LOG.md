@@ -12,6 +12,7 @@
 
 Data API: `GET /api/macrofx/dashboard-data`. Docs: `GET /api/macrofx/doc/{rules|upgrades|changelog|devlog}` (markdown, or `?format=html`). No writes, no commands, claim tokens never returned. Markdown is rendered server-side, so the page has no script CDN dependency.
 **Verification:** `pytest` 33 passed / 0 failed (28 existing + 5 dashboard: page/data keys, no claim tokens, docs + path safety, read-only, next-run schedule). Local render checked with Playwright in light, dark and 390px mobile against seeded data; fixed realized-commission double count, chart label overlap and log list rendering found in those checks.
+**Deployment:** Dashboard deployment `22e7b502-27a1-4842-aba3-857f1ddb274a` (commit `7413025`) live 2026-10-14 ~17:06 UTC. Production check: `/macrofx` 200, data API 200 with real account data (EA v2.02 online, 2 positions matching week-ending-10-09 targets, 7 trades, 12 fills, 3 weekly runs, 19 equity days), no claim tokens in output; EA heartbeat endpoint still 200.
 **Access note:** The page is public and read-only, like the existing `/` dashboard and `/api/macrofx/status`. It shows the demo account's balance and positions. Add a password if that should change.
 **Not done:** Swap *rates* (expected nightly swap) need the EA to upload them (Upgrades #4); the dashboard currently shows swap already charged. Weekly target execution is still manual (Upgrades #1).
 
