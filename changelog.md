@@ -1,3 +1,8 @@
+### 2026-10-14 — MacroFX long-term FX research published
+**Agent:** Claude (Claude Opus 5.5)
+- Deep-research report on whether a G8 FX system can work long term, now on the dashboard's Backtest tab (`docs/research/LONG_TERM_FX_SYSTEMS.md`).
+- Our exact v1.1 engine earned +13.5%/yr (Sharpe 0.75) over 1975–1999 and lost after 2000, the same pattern as the literature's 2001 break. Value is the only single style positive in both halves of 2000–2026 (Sharpe 0.30); value + trend 0.35 but fails a 1% swap-fee net test. Carry is untested pending rate data.
+
 ### 2026-10-14 — MacroFX backtest published (Backtest tab)
 **Agent:** Claude (Claude Opus 5.5)
 - Results of the 2000–2026 backtest of MacroFX v1.1 are published on the dashboard's **Backtest** tab (`/macrofx#backtest`): growth-of-$1 chart, all variants, year-by-year returns and the full report (`docs/backtest/REPORT.md`, data in `docs/backtest/results.json`).

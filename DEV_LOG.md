@@ -1,3 +1,34 @@
+### 2026-10-14 — MacroFX research: can a G8 FX system work long term?
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Requested by:** Casey — deep research on this system and on other FX systems that could succeed long term.
+**Files:** `docs/research/LONG_TERM_FX_SYSTEMS.md` (report), `docs/research/notes/*.md` (5 cited research notes), `scripts/research_backtests.py` (new), `docs/backtest/research_results.json` (new), `macrofx_dashboard.py` + `static/macrofx_dashboard.html` (report rendered on the Backtest tab), `docs/MACROFX_UPGRADES.md` (#4 priority, #11 findings), `.gitignore`.
+
+**Research (5 parallel research tracks: momentum, carry, value/combinations, post-2010 performance, retail implementation/data):**
+- G10 currency momentum has a structural break around Aug 2001: Hutchinson et al. 2022 report a 2010–20 out-of-sample Sharpe of −0.68, and 123 variants averaged −0.42. AQR puts post-publication Sharpe at 0.08. Our −0.24 is consistent with this; it is not a bug.
+- Carry paid before 2008. The DB G10 carry index never regained its 2007 peak through 2022, and the DBV ETF was liquidated in Mar 2023. Carry has revived in 2022–26.
+- Value is the most durable style (AQR post-publication 0.69). The multi-style blend is the only construction with a defensible post-2010 record (Russell 3.4%/yr at 3.7% vol, 1999–2024).
+- Retail swap fees (OANDA 1.00%, IG 0.5–0.8%) take one-third to one-half of a G10 premium.
+- A $1,000 account cannot size these strategies; sizing becomes reasonable at about $10,000.
+
+**Own tests** (`scripts/research_backtests.py`, H.10 + World Bank CPI from GitHub, spot-only, 2 bp/side):
+- Spec 0: our exact v1.1 engine over 1975–1999 on 7 currencies earned +13.53%/yr, Sharpe +0.75, t +3.78. This confirms the harness.
+- Academic 3m/1m momentum: Sharpe +0.56 over 1975–99, −0.12 over 2000–26, −0.54 over 2013–26.
+- Value (−Δ60m real FX, CPI lagged 12 months): Sharpe +0.30, both halves positive (+0.34 / +0.25), max DD −21%.
+- 12m trend: Sharpe +0.11. Value + trend: Sharpe +0.35, max DD −12%; 2013–26 only +0.13. This fails a 1% swap-fee net test (about 0.1–0.2 net Sharpe).
+- Carry was not tested: no rate history is reachable from the sandbox (FRED, BIS and OECD are blocked; only GitHub raw is reachable).
+
+**Recommendation recorded:**
+- Retire momentum as a signal and keep the demo for infrastructure.
+- EA should log MidasFX swaps and spreads.
+- One-time off-sandbox fetch of rates and REER data.
+- Backtest carry + value and dollar carry against pre-registered pass criteria.
+- Real money only at $10,000+.
+
+**No trading or strategy changes made.**
+**Test fix:** 6 plan tests failed when run after 16:00 ET. Approving with "run at next window" correctly schedules for the next morning, but the tests assumed the window was open. They now set the plan due explicitly; window behaviour stays covered by `test_window_and_schedule`. The production code is unchanged. `pytest` 48/48 after hours.
+
 ### 2026-10-14 — MacroFX backtest results published on the dashboard
 
 **Agent:** Claude

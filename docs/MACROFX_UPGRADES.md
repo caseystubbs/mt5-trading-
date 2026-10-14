@@ -28,7 +28,7 @@ Every strategy change must be versioned and tested out-of-sample before it goes 
 
 **Result:** Commands carry score, version and plan number; the EA's fills are tagged when it acknowledges; plan trades are labelled as model trades; each Friday run saves the full 28-pair ranking.
 
-### 4. Upload broker swap rates — *Proposed*
+### 4. Upload broker swap rates — *Proposed* · Priority: high (decides whether carry is viable)
 **Problem:** The dashboard shows swap already charged, but not what a pair *will* cost per night.
 
 **Proposal:** The EA uploads `MODE_SWAPLONG`/`MODE_SWAPSHORT` for all 28 pairs daily, so the dashboard shows expected nightly swap for current and upcoming trades.
@@ -78,6 +78,15 @@ Every strategy change must be versioned and tested out-of-sample before it goes 
 **Proposal:** Test carry (interest-rate differential), carry + momentum, and longer holding periods, through the same backtest before any of them touch the demo. Needs a source of historical short-term interest rates.
 
 **Hold:** No signal changes, no size increase and no live account until a candidate shows a real edge in the backtest.
+
+**Research done (Oct 14, 2026):** see `docs/research/LONG_TERM_FX_SYSTEMS.md` (Backtest tab).
+- The evidence says G10 momentum died around 2001. Our exact engine earned +13.5%/yr (Sharpe 0.75, t = 3.8) over 1975–1999, so the code is right.
+- Value (5-year real FX reversal) stayed positive in both halves of 2000–2026 (Sharpe 0.30); value + trend reached 0.35 with a −12% max drawdown. Both are small and fail a 1% swap-fee net test.
+- Next steps, in order:
+  1. EA logs MidasFX swap and spreads daily (#4).
+  2. One-time fetch of FRED/BIS rates and real effective exchange rates from outside the sandbox.
+  3. Backtest carry + value (dollar-neutral, monthly) and dollar carry against pass criteria written down before the run.
+- Real money only at $10,000+ (a $1,000 account cannot size these strategies).
 
 
 ## Done

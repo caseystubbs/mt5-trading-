@@ -237,6 +237,9 @@ footer{color:var(--text-3);font-size:12px;padding:20px 0}
     <div class="tablewrap" id="bt-years"></div>
     <h2>Report</h2>
     <div class="md" id="doc-backtest"><p class="muted">Loading…</p></div>
+    <h2>Research: can a G8 FX system work long term?</h2>
+    <p class="sub">Deep research across the academic and practitioner evidence on momentum, carry, value, trend and dollar strategies, plus our own follow-up tests (Oct 2026).</p>
+    <div class="md" id="doc-research"><p class="muted">Loading…</p></div>
   </section>
 
   <section class="tab" id="tab-rules"><div class="md" id="doc-rules"><p class="muted">Loading…</p></div></section>
@@ -285,7 +288,7 @@ function showTab(name) {
   document.querySelectorAll("section.tab").forEach(s => s.classList.toggle("active", s.id === "tab-" + name));
   if (name === "rules") loadDoc("rules", "#doc-rules");
   if (name === "upgrades") loadDoc("upgrades", "#doc-upgrades");
-  if (name === "backtest") { loadDoc("backtest", "#doc-backtest"); loadBacktest(); }
+  if (name === "backtest") { loadDoc("backtest", "#doc-backtest"); loadDoc("research", "#doc-research"); loadBacktest(); }
   if (name === "changelog") loadDoc(document.querySelector(".seg [aria-pressed=true]").dataset.doc, "#doc-changelog");
   try { localStorage.setItem("macrofx-tab", name); } catch (e) {}
   history.replaceState(null, "", "#" + name);

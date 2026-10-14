@@ -146,6 +146,15 @@ def drive(api, ea, account, rounds=20):
     return latest(account)
 
 
+def approve_now(api, pid):
+    """Approve, then make it due now. (The server's real window may be closed when tests run,
+    e.g. after 4 PM ET; window behaviour itself is covered by test_window_and_schedule.)"""
+    r = api.post(f"/api/macrofx/v2/admin/proposals/{pid}/approve", headers=ADMIN, params={"run_now": "true"})
+    assert r.status_code == 200, r.text
+    sql("UPDATE macrofx_v2_proposals SET execute_after=NOW()-INTERVAL '1 minute' WHERE id=$1", pid)
+    return r
+
+
 ROTATE = [{"symbol": "EURUSD", "direction": "SHORT", "score": -1.78}, {"symbol": "AUDCHF", "direction": "LONG", "score": 1.63}]
 HELD = [{"ticket": 111, "symbol": "EURAUD", "direction": "SHORT"}, {"ticket": 222, "symbol": "NZDUSD", "direction": "SHORT"}]
 
@@ -201,6 +210,7 @@ def test_full_weekly_rotation_with_approval(api, account, window_open):
     assert api.post(f"/api/macrofx/v2/admin/proposals/{p['id']}/approve", headers={"X-MacroFX-Admin-Key": "x"}).status_code == 403
     r = api.post(f"/api/macrofx/v2/admin/proposals/{p['id']}/approve", headers=ADMIN, params={"run_now": "true"})
     assert r.status_code == 200 and r.json()["status"] == "APPROVED"
+    sql("UPDATE macrofx_v2_proposals SET execute_after=NOW()-INTERVAL '1 minute' WHERE id=$1", p["id"])
     assert api.post(f"/api/macrofx/v2/admin/proposals/{p['id']}/approve", headers=ADMIN).status_code == 409
 
     p = drive(api, ea, account)
@@ -238,7 +248,7 @@ def test_approved_plan_waits_outside_window(api, account, monkeypatch):
     new_run(ROTATE)
     tick(account)
     p = latest(account)
-    api.post(f"/api/macrofx/v2/admin/proposals/{p['id']}/approve", headers=ADMIN, params={"run_now": "true"})
+    approve_now(api, p["id"])
     sql("UPDATE macrofx_v2_proposals SET execute_after=NOW()-INTERVAL '1 minute' WHERE id=$1", p["id"])
     tick(account); ea.poll(); tick(account)
     p = latest(account)
@@ -267,7 +277,7 @@ def test_spread_block_retries_hourly_not_immediately(api, account, window_open):
     tick(account)
     p = latest(account)
     assert [(s["kind"], s["symbol"]) for s in p["steps"]] == [("OPEN", "EURUSD")]
-    api.post(f"/api/macrofx/v2/admin/proposals/{p['id']}/approve", headers=ADMIN, params={"run_now": "true"})
+    approve_now(api, p["id"])
     ea.mode = "spread_block"
     tick(account); ea.poll(); tick(account)
     p = latest(account)
@@ -290,7 +300,7 @@ def test_claimed_but_unacked_stops_for_review_and_never_retries(api, account, wi
     new_run(ROTATE)
     tick(account)
     p = latest(account)
-    api.post(f"/api/macrofx/v2/admin/proposals/{p['id']}/approve", headers=ADMIN, params={"run_now": "true"})
+    approve_now(api, p["id"])
     ea.mode = "claim_only"
     tick(account); ea.poll()
     sql("UPDATE macrofx_v2_commands SET claimed_at=NOW()-INTERVAL '4 minutes' WHERE account_id=$1 AND status='CLAIMED'", account)
@@ -314,7 +324,7 @@ def test_manual_close_is_respected(api, account, window_open):
     # Operator closes NZDUSD and EURAUD by hand before Monday
     ea.positions = {}
     ea.upload()
-    api.post(f"/api/macrofx/v2/admin/proposals/{p['id']}/approve", headers=ADMIN, params={"run_now": "true"})
+    approve_now(api, p["id"])
     p = drive(api, ea, account)
     assert p["status"] == "DONE"
     assert p["steps"][0]["status"] == "SKIPPED" and p["steps"][0]["result"] == "already closed"
@@ -337,7 +347,7 @@ def test_reject_and_cancel(api, account, window_open):
     new_run(ROTATE)
     tick(account)
     p = latest(account)
-    api.post(f"/api/macrofx/v2/admin/proposals/{p['id']}/approve", headers=ADMIN, params={"run_now": "true"})
+    approve_now(api, p["id"])
     tick(account)
     assert latest(account)["steps"][0]["status"] == "SENT"
     r = api.post(f"/api/macrofx/v2/admin/proposals/{p['id']}/cancel", headers=ADMIN)
@@ -353,7 +363,7 @@ def test_stale_ea_blocks_execution(api, account, window_open):
     new_run(ROTATE)
     tick(account)
     p = latest(account)
-    api.post(f"/api/macrofx/v2/admin/proposals/{p['id']}/approve", headers=ADMIN, params={"run_now": "true"})
+    approve_now(api, p["id"])
     sql("UPDATE macrofx_heartbeats SET captured_at=NOW()-INTERVAL '5 minutes' WHERE account_id=$1", account)
     tick(account)
     assert sql("SELECT COUNT(*) n FROM macrofx_v2_commands WHERE account_id=$1", account, fetch=True)[0]["n"] == 0

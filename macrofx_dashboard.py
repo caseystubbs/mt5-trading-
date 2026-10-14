@@ -281,6 +281,7 @@ DOCS = {
     "changelog": lambda: _macro_sections(os.path.join(ROOT, "changelog.md")),
     "devlog": lambda: _macro_sections(os.path.join(ROOT, "DEV_LOG.md")),
     "backtest": lambda: open(os.path.join(ROOT, "docs", "backtest", "REPORT.md"), encoding="utf-8").read(),
+    "research": lambda: open(os.path.join(ROOT, "docs", "research", "LONG_TERM_FX_SYSTEMS.md"), encoding="utf-8").read(),
 }
 
 
