@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MacroFX Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f6f5f2; --surface:#fcfcfb; --surface-2:#f0efeb; --border:#e3e1db;
+  --text:#0b0b0b; --text-2:#52514e; --text-3:#7a7974;
+  --accent:#2a78d6; --series-1:#2a78d6; --series-2:#eb6834;
+  --good:#0f7b3f; --good-bg:#e5f4ea; --bad:#b42318; --bad-bg:#fbe9e7;
+  --warn:#8a5a00; --warn-bg:#fdf3dc; --info-bg:#e8f1fc;
+  --grid:#e7e5df;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#111110; --surface:#1a1a19; --surface-2:#222220; --border:#33322f;
+    --text:#f0efec; --text-2:#c3c2b7; --text-3:#8f8e86;
+    --accent:#3987e5; --series-1:#3987e5; --series-2:#d95926;
+    --good:#5fcf8a; --good-bg:#16301f; --bad:#f08a80; --bad-bg:#3a1a17;
+    --warn:#f0c060; --warn-bg:#3a2e12; --info-bg:#172638;
+    --grid:#2b2a28;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111110; --surface:#1a1a19; --surface-2:#222220; --border:#33322f;
+  --text:#f0efec; --text-2:#c3c2b7; --text-3:#8f8e86;
+  --accent:#3987e5; --series-1:#3987e5; --series-2:#d95926;
+  --good:#5fcf8a; --good-bg:#16301f; --bad:#f08a80; --bad-bg:#3a1a17;
+  --warn:#f0c060; --warn-bg:#3a2e12; --info-bg:#172638;
+  --grid:#2b2a28;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.mono,td.num,.kpi .v{font-family:"JetBrains Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+header{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:5}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+.top{display:flex;align-items:center;gap:16px;padding:14px 0 10px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:17px;letter-spacing:-.01em}
+.brand small{font-weight:500;color:var(--text-3);font-size:12px;margin-left:8px}
+.status{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--text-2);background:var(--surface)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--text-3)}
+.dot.ok{background:var(--good)} .dot.bad{background:var(--bad)} .dot.warn{background:var(--warn)}
+nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav button{background:none;border:0;border-bottom:2px solid transparent;padding:9px 12px;font:inherit;font-weight:500;color:var(--text-2);cursor:pointer;white-space:nowrap}
+nav button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--accent)}
+nav button:hover{color:var(--text)}
+main{padding:22px 0 60px}
+section.tab{display:none} section.tab.active{display:block}
+h2{font-size:16px;margin:28px 0 10px;letter-spacing:-.01em} h2:first-child{margin-top:0}
+.sub{color:var(--text-3);font-size:12.5px;margin:-6px 0 12px}
+.grid{display:grid;gap:12px}
+.kpis{grid-template-columns:repeat(auto-fill,minmax(165px,1fr))}
+.kpi,.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.kpi .l{font-size:12px;color:var(--text-3)}
+.kpi .v{font-size:21px;font-weight:500;margin-top:2px;letter-spacing:-.02em}
+.kpis.small .kpi .v{font-family:Inter,system-ui,sans-serif;font-size:15.5px;font-weight:600;letter-spacing:0}
+.kpi .d{font-size:12px;color:var(--text-2);margin-top:2px}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+.tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+th{font-weight:500;color:var(--text-3);font-size:12px;background:var(--surface-2)}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right}
+.tag{display:inline-block;padding:1px 8px;border-radius:5px;font-size:11.5px;font-weight:600;letter-spacing:.02em}
+.tag.long{background:var(--good-bg);color:var(--good)} .tag.short{background:var(--bad-bg);color:var(--bad)}
+.tag.neutral{background:var(--surface-2);color:var(--text-2)}
+.tag.ok{background:var(--good-bg);color:var(--good)} .tag.fail{background:var(--bad-bg);color:var(--bad)} .tag.wait{background:var(--warn-bg);color:var(--warn)}
+.banner{border-radius:10px;padding:12px 16px;margin:0 0 16px;border:1px solid var(--border);display:flex;gap:10px;align-items:flex-start}
+.banner.warn{background:var(--warn-bg);border-color:transparent}
+.banner.info{background:var(--info-bg);border-color:transparent}
+.banner b{display:block}
+.chart{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative}
+.legend{display:flex;gap:16px;font-size:12px;color:var(--text-2);margin-bottom:6px}
+.legend i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:6px}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.12);display:none;min-width:150px}
+.tip .r{display:flex;justify-content:space-between;gap:14px}
+.two{grid-template-columns:1fr 1fr} @media(max-width:860px){.two{grid-template-columns:1fr}}
+.md{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 28px 24px;max-width:860px}
+.md h1{font-size:22px;margin:18px 0 6px} .md h2{font-size:17px;margin:28px 0 8px;padding-top:14px;border-top:1px solid var(--border)}
+.md h3{font-size:14.5px;margin:20px 0 6px}
+.md table{margin:10px 0;border:1px solid var(--border);border-radius:8px} .md code{font-family:"JetBrains Mono",monospace;font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+.md blockquote{margin:12px 0;padding:10px 14px;background:var(--warn-bg);border-radius:8px}
+.md blockquote p{margin:0}
+.muted{color:var(--text-3)}
+.empty{padding:18px;color:var(--text-3);text-align:center}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px}
+.seg button{border:0;background:var(--surface);padding:6px 12px;font:inherit;font-size:12.5px;color:var(--text-2);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface-2);color:var(--text);font-weight:600}
+footer{color:var(--text-3);font-size:12px;padding:20px 0}
+@media(max-width:600px){.wrap{padding:0 16px}.status{margin-left:0}.kpi .v{font-size:18px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">MacroFX<small>Weekly currency momentum · demo</small></div>
+      <div class="status" id="status"></div>
+    </div>
+    <nav role="tablist" id="tabs">
+      <button role="tab" data-tab="overview" aria-selected="true">Overview</button>
+      <button role="tab" data-tab="week">This Week</button>
+      <button role="tab" data-tab="history">History</button>
+      <button role="tab" data-tab="rules">How It Works</button>
+      <button role="tab" data-tab="changelog">Changelog</button>
+      <button role="tab" data-tab="upgrades">Upgrades</button>
+    </nav>
+  </div>
+</header>
+<main class="wrap">
+  <section class="tab active" id="tab-overview">
+    <div class="grid kpis" id="kpis"></div>
+    <h2>Open positions</h2>
+    <p class="sub" id="pos-sub"></p>
+    <div class="tablewrap" id="positions"></div>
+    <h2>Account equity</h2>
+    <p class="sub">Daily close, from the EA's heartbeats.</p>
+    <div class="chart" id="equity-chart"></div>
+  </section>
+
+  <section class="tab" id="tab-week">
+    <div id="week-banner"></div>
+    <div class="grid two">
+      <div>
+        <h2>Current targets</h2>
+        <p class="sub" id="targets-sub"></p>
+        <div class="tablewrap" id="targets"></div>
+      </div>
+      <div>
+        <h2>Targets vs. what's held</h2>
+        <p class="sub">What would need to change to match the model.</p>
+        <div class="tablewrap" id="diff"></div>
+      </div>
+    </div>
+    <h2>Next weekly run</h2>
+    <div class="grid kpis small" id="next-run"></div>
+    <h2>If the model ran right now</h2>
+    <p class="sub" id="preview-sub"></p>
+    <div class="grid two">
+      <div class="tablewrap" id="preview-currencies"></div>
+      <div class="tablewrap" id="preview-pairs"></div>
+    </div>
+    <h2>Currency ranking from the last official run</h2>
+    <div class="tablewrap" id="ranking"></div>
+  </section>
+
+  <section class="tab" id="tab-history">
+    <div class="grid kpis" id="hist-kpis"></div>
+    <h2>Trades</h2>
+    <p class="sub">MAE = worst point while open · MFE = best point while open (both net of swap and commission).</p>
+    <div class="tablewrap" id="trades"></div>
+    <h2>Weekly runs</h2>
+    <div class="tablewrap" id="runs"></div>
+    <h2>Fills</h2>
+    <p class="sub">Every order the broker filled, with spread and costs.</p>
+    <div class="tablewrap" id="fills"></div>
+    <h2>Remote commands</h2>
+    <div class="tablewrap" id="commands"></div>
+  </section>
+
+  <section class="tab" id="tab-rules"><div class="md" id="doc-rules"><p class="muted">Loading…</p></div></section>
+  <section class="tab" id="tab-changelog">
+    <div class="seg" role="group">
+      <button data-doc="changelog" aria-pressed="true">Changelog</button>
+      <button data-doc="devlog" aria-pressed="false">Detailed dev log</button>
+    </div>
+    <div class="md" id="doc-changelog"><p class="muted">Loading…</p></div>
+  </section>
+  <section class="tab" id="tab-upgrades"><div class="md" id="doc-upgrades"><p class="muted">Loading…</p></div></section>
+  <footer id="footer"></footer>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num = (v, d=2) => v == null || isNaN(v) ? "—" : Number(v).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+const money = (v) => v == null || isNaN(v) ? "—" : (v < 0 ? "−$" : "$") + num(Math.abs(v));
+const smoney = (v) => v == null || isNaN(v) ? "—" : (v > 0 ? "+$" : v < 0 ? "−$" : "$") + num(Math.abs(v));
+const cls = (v) => v > 0 ? "pos" : v < 0 ? "neg" : "";
+const ET = {timeZone:"America/New_York"};
+const dt = (s) => s ? new Date(s).toLocaleString("en-US",{...ET,month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : "—";
+const day = (s) => s ? new Date(s.length <= 10 ? s + "T12:00:00Z" : s).toLocaleDateString("en-US",{...ET,month:"short",day:"numeric",year:"numeric"}) : "—";
+const side = (s) => { const l = /BUY|LONG/i.test(s); return `<span class="tag ${l?"long":"short"}">${l?"LONG":"SHORT"}</span>`; };
+const ago = (sec) => sec < 90 ? `${Math.round(sec)}s ago` : sec < 5400 ? `${Math.round(sec/60)} min ago` : `${(sec/3600).toFixed(1)} h ago`;
+
+function table(cols, rows, empty="Nothing yet.") {
+  if (!rows.length) return `<div class="empty">${empty}</div>`;
+  return `<table><thead><tr>${cols.map(c=>`<th class="${c.num?"num":""}">${c.h}</th>`).join("")}</tr></thead><tbody>${
+    rows.map(r=>`<tr>${cols.map(c=>`<td class="${c.num?"num":""}">${c.f(r)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+const kpi = (l, v, d="", c="") => `<div class="kpi"><div class="l">${l}</div><div class="v ${c}">${v}</div>${d?`<div class="d">${d}</div>`:""}</div>`;
+
+// ---------- tabs ----------
+const loadedDocs = {};
+async function loadDoc(name, target) {
+  if (!loadedDocs[name]) {
+    const r = await fetch(`/api/macrofx/doc/${name}?format=html`);
+    loadedDocs[name] = r.ok ? await r.text() : "<p class='muted'>Not available.</p>";
+  }
+  $(target).innerHTML = loadedDocs[name];
+}
+function showTab(name) {
+  document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === name));
+  document.querySelectorAll("section.tab").forEach(s => s.classList.toggle("active", s.id === "tab-" + name));
+  if (name === "rules") loadDoc("rules", "#doc-rules");
+  if (name === "upgrades") loadDoc("upgrades", "#doc-upgrades");
+  if (name === "changelog") loadDoc(document.querySelector(".seg [aria-pressed=true]").dataset.doc, "#doc-changelog");
+  try { localStorage.setItem("macrofx-tab", name); } catch (e) {}
+  history.replaceState(null, "", "#" + name);
+}
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
+document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  loadDoc(b.dataset.doc, "#doc-changelog");
+});
+
+// ---------- equity chart (inline SVG, hover crosshair) ----------
+function equityChart(rows) {
+  const el = $("#equity-chart");
+  const pts = rows.filter(r => r.close_equity != null);
+  if (pts.length < 2) { el.innerHTML = `<div class="empty">Need at least two days of equity history.</div>`; return; }
+  const W = Math.max(320, el.clientWidth - 32), H = 240, P = {l:54, r:12, t:10, b:26};
+  const vals = pts.flatMap(r => [r.close_equity, r.close_balance].filter(v => v != null));
+  let lo = Math.min(...vals), hi = Math.max(...vals); const pad = Math.max(2, (hi - lo) * .15); lo -= pad; hi += pad;
+  const x = i => P.l + i * (W - P.l - P.r) / (pts.length - 1);
+  const y = v => P.t + (hi - v) * (H - P.t - P.b) / (hi - lo);
+  const path = k => pts.map((r,i) => r[k] == null ? "" : `${i?"L":"M"}${x(i).toFixed(1)},${y(r[k]).toFixed(1)}`).join("");
+  const ticks = 4, grid = Array.from({length:ticks+1}, (_,i) => lo + (hi-lo)*i/ticks);
+  // Date labels at least ~64px apart; always keep the last one.
+  const xLabels = []; let lastX = -1e9;
+  for (let i = 0; i < pts.length; i++) { if (x(i) - lastX >= 64) { xLabels.push(i); lastX = x(i); } }
+  const li = pts.length - 1;
+  if (xLabels[xLabels.length-1] !== li) { if (x(li) - x(xLabels[xLabels.length-1]) < 64) xLabels.pop(); xLabels.push(li); }
+  el.innerHTML = `<div class="legend"><span><i style="background:var(--series-1)"></i>Equity</span><span><i style="background:var(--series-2)"></i>Balance</span></div>
+  <svg width="${W}" height="${H}" role="img" aria-label="Daily account equity and balance">
+    ${grid.map(g=>`<line x1="${P.l}" x2="${W-P.r}" y1="${y(g)}" y2="${y(g)}" stroke="var(--grid)"/><text x="${P.l-8}" y="${y(g)+4}" text-anchor="end" font-size="11" fill="var(--text-3)" font-family="JetBrains Mono">$${num(g,0)}</text>`).join("")}
+    ${xLabels.map(i=>`<text x="${x(i)}" y="${H-6}" text-anchor="${i===0?"start":i===pts.length-1?"end":"middle"}" font-size="11" fill="var(--text-3)">${new Date(pts[i].equity_date+"T12:00:00Z").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</text>`).join("")}
+    <path d="${path("close_balance")}" fill="none" stroke="var(--series-2)" stroke-width="2" stroke-linejoin="round"/>
+    <path d="${path("close_equity")}" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round"/>
+    <line id="xh" y1="${P.t}" y2="${H-P.b}" stroke="var(--text-3)" stroke-dasharray="3 3" visibility="hidden"/>
+    <circle id="dot1" r="4.5" fill="var(--series-1)" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>
+    <circle id="dot2" r="4.5" fill="var(--series-2)" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>
+    <rect x="${P.l}" y="${P.t}" width="${W-P.l-P.r}" height="${H-P.t-P.b}" fill="transparent" id="hit"/>
+  </svg><div class="tip" id="tip"></div>`;
+  const svg = el.querySelector("svg"), tip = $("#tip");
+  const show = (cx) => {
+    const i = Math.max(0, Math.min(pts.length-1, Math.round((cx - P.l) / ((W-P.l-P.r)/(pts.length-1)))));
+    const r = pts[i], X = x(i);
+    svg.querySelector("#xh").setAttribute("x1", X); svg.querySelector("#xh").setAttribute("x2", X);
+    svg.querySelector("#xh").setAttribute("visibility","visible");
+    [["#dot1","close_equity"],["#dot2","close_balance"]].forEach(([id,k]) => {
+      const c = svg.querySelector(id); if (r[k]==null) return c.setAttribute("visibility","hidden");
+      c.setAttribute("cx", X); c.setAttribute("cy", y(r[k])); c.setAttribute("visibility","visible"); });
+    tip.innerHTML = `<b>${day(r.equity_date)}</b><div class="r"><span>Equity</span><span class="mono">${money(r.close_equity)}</span></div><div class="r"><span>Balance</span><span class="mono">${money(r.close_balance)}</span></div><div class="r muted"><span>Day range</span><span class="mono">${money(r.low_equity)}–${money(r.high_equity)}</span></div>`;
+    tip.style.display = "block";
+    tip.style.left = Math.min(X + 28, el.clientWidth - 180) + "px"; tip.style.top = "40px";
+  };
+  const hit = svg.querySelector("#hit");
+  hit.addEventListener("pointermove", e => show(e.offsetX));
+  hit.addEventListener("pointerleave", () => { tip.style.display="none"; ["#xh","#dot1","#dot2"].forEach(i=>svg.querySelector(i).setAttribute("visibility","hidden")); });
+}
+
+// ---------- render ----------
+function render(d) {
+  const a = d.account || {};
+  const online = a.online, demo = a.is_demo;
+  $("#status").innerHTML = [
+    `<span class="pill"><span class="dot ${online?"ok":"bad"}"></span>EA ${online?"online":"offline"} · ${a.captured_at?ago(a.age_seconds):"never"}</span>`,
+    `<span class="pill">${esc(a.ea_version||"no EA")}</span>`,
+    `<span class="pill"><span class="dot ${demo?"ok":"bad"}"></span>${demo?"Demo":"NOT demo"} ${esc(d.account_id)}</span>`,
+    `<span class="pill"><span class="dot ${d.remote.enabled?"warn":"ok"}"></span>Remote control ${d.remote.enabled?"ON":"off"}</span>`,
+  ].join("");
+
+  const openPnl = (a.equity ?? 0) - (a.balance ?? 0);
+  const sinceStart = a.start_balance ? a.equity - a.start_balance : null;
+  const openSwap = d.positions.reduce((s,p)=>s+(+p.swap||0),0);
+  const closedSwap = +d.totals.swap || 0;
+  const next = new Date(d.schedule.next_run_utc), hrs = (next - Date.now())/3.6e6;
+  $("#kpis").innerHTML = [
+    kpi("Balance", money(a.balance)),
+    kpi("Equity", money(a.equity), `Open P&amp;L <span class="${cls(openPnl)}">${smoney(openPnl)}</span>`),
+    kpi("Since start", smoney(sinceStart), a.start_balance?`from ${money(a.start_balance)} on ${day(a.start_at)}`:"", cls(sinceStart)),
+    kpi("Swap", smoney(openSwap + closedSwap), `${smoney(openSwap)} open · ${smoney(closedSwap)} closed`, cls(openSwap+closedSwap)),
+    kpi("Positions", `${d.positions.length} / ${d.model.max_positions}`, "0.01 lots each"),
+    kpi("Next weekly run", hrs < 48 ? `${Math.floor(hrs)}h ${Math.round((hrs%1)*60)}m` : `${(hrs/24).toFixed(1)} days`, dt(d.schedule.next_run_utc) + " ET"),
+  ].join("");
+
+  $("#pos-sub").textContent = d.positions_snapshot_at ? `As reported by the EA ${dt(d.positions_snapshot_at)} ET. Swap is charged nightly (triple on Wednesday).` : "";
+  $("#positions").innerHTML = table([
+    {h:"Pair", f:p=>`<b>${esc(p.symbol)}</b>`}, {h:"Side", f:p=>side(p.side)}, {h:"Lots", num:1, f:p=>num(p.lots)},
+    {h:"Opened", f:p=>dt(p.opened_at)}, {h:"Entry", num:1, f:p=>num(p.open_price,5)}, {h:"Now", num:1, f:p=>num(p.current_price,5)},
+    {h:"P&amp;L", num:1, f:p=>`<span class="${cls(p.pnl)}">${smoney(p.pnl)}</span>`},
+    {h:"Swap", num:1, f:p=>`<span class="${cls(p.swap)}">${smoney(p.swap)}</span>`},
+    {h:"Swap / day", num:1, f:p=>p.swap_per_day==null?`<span class="muted">&lt;1 day</span>`:smoney(p.swap_per_day)},
+    {h:"Net", num:1, f:p=>`<b class="${cls(p.net)}">${smoney(p.net)}</b>`},
+  ], d.positions, "No open MacroFX positions.");
+  equityChart(d.equity);
+
+  // This week
+  const diff = d.target_diff, needs = diff.to_open.length + diff.to_close.length;
+  $("#week-banner").innerHTML = `<div class="banner ${needs?"warn":"info"}"><div><b>${needs?`${needs} change${needs>1?"s":""} needed to match the model`:"Positions match the model's targets"}</b>
+    EA v2.02 does not act on weekly targets automatically. After each Friday run, changes have to be sent as commands (see Upgrades #1).</div></div>`;
+  const lr = d.latest_run;
+  $("#targets-sub").textContent = lr ? `From the run for the week ending ${day(lr.week_ending)} (${lr.strategy_version}). Strongest ${lr.strongest_currency}, weakest ${lr.weakest_currency}.` : "No weekly run yet.";
+  $("#targets").innerHTML = table([
+    {h:"Pair", f:t=>`<b>${esc(t.symbol)}</b>`}, {h:"Side", f:t=>side(t.direction)}, {h:"Lots", num:1, f:t=>num(t.lots)},
+    {h:"Score", num:1, f:t=>num(t.score,3)}, {h:"Why", f:t=>`<span class="muted" style="white-space:normal">${esc(t.reason)}</span>`},
+  ], d.active_targets, "No active targets.");
+  const drows = [...diff.to_close.map(r=>({...r,act:"Close"})), ...diff.to_open.map(r=>({...r,act:"Open"})), ...diff.matching.map(r=>({...r,act:"Hold"}))];
+  $("#diff").innerHTML = table([
+    {h:"Action", f:r=>`<span class="tag ${r.act==="Hold"?"ok":r.act==="Open"?"wait":"fail"}">${r.act.toUpperCase()}</span>`},
+    {h:"Pair", f:r=>`<b>${esc(r.symbol)}</b>`}, {h:"Side", f:r=>side(r.direction)},
+  ], drows, "No targets or positions.");
+  $("#next-run").innerHTML = [
+    kpi("Runs", dt(d.schedule.next_run_utc) + " ET", "Every Friday 9 PM ET (8 PM in winter)"),
+    kpi("Uses", "Daily closes", "Through Friday's close, all 28 pairs"),
+    kpi("Execution", "Manual / command", "Not automatic on EA v2.02"),
+  ].join("");
+  const pv = d.preview || {};
+  if (pv.available) {
+    $("#preview-sub").textContent = `Using daily closes through ${day(pv.as_of_bar)}. This is a live preview — Friday's official run can differ.`;
+    $("#preview-currencies").innerHTML = table([
+      {h:"Rank", num:1, f:(r)=>pv.currencies.indexOf(r)+1}, {h:"Currency", f:r=>`<b>${r.currency}</b>`},
+      {h:"Score", num:1, f:r=>`<span class="${cls(r.score)}">${(r.score>0?"+":"")+num(r.score,3)}</span>`},
+      {h:"Agree", num:1, f:r=>`${r.agreement}/4`},
+    ], pv.currencies);
+    $("#preview-pairs").innerHTML = table([
+      {h:"Pair", f:r=>`<b>${r.symbol}</b>`}, {h:"Side", f:r=>side(r.direction)},
+      {h:"Score", num:1, f:r=>num(r.pair_score,3)},
+      {h:"Status", f:r=>r.picked?`<span class="tag ok">PICK</span>`:r.eligible?`<span class="tag neutral">eligible</span>`:`<span class="tag neutral muted">not eligible</span>`},
+    ], pv.pairs.slice(0,12));
+  } else {
+    $("#preview-sub").textContent = pv.reason || "Preview unavailable.";
+    $("#preview-currencies").innerHTML = $("#preview-pairs").innerHTML = "";
+  }
+  const snap = (lr && Array.isArray(lr.snapshot_json)) ? lr.snapshot_json : [];
+  $("#ranking").innerHTML = table([
+    {h:"Currency", f:r=>`<b>${r.currency}</b>`},
+    {h:"Score", num:1, f:r=>`<span class="${cls(r.score)}">${(r.score>0?"+":"")+num(r.score,3)}</span>`},
+    {h:"Agreement", num:1, f:r=>`${r.agreement}/4`},
+    {h:"1 mo", num:1, f:r=>num(r.m21,3)}, {h:"3 mo", num:1, f:r=>num(r.m63,3)}, {h:"6 mo", num:1, f:r=>num(r.m126,3)}, {h:"12 mo", num:1, f:r=>num(r.m252,3)},
+  ], snap);
+
+  // History
+  const closed = d.trades.filter(t=>t.status==="CLOSED"), s = d.trade_summary || {};
+  const realized = (+d.totals.pnl||0) + (+d.totals.swap||0) + (+d.totals.commission||0);
+  $("#hist-kpis").innerHTML = [
+    kpi("Realized net", smoney(realized), "P&amp;L + swap + commission", cls(realized)),
+    kpi("Closed trades", closed.length, closed.length < 20 ? "Too few to judge the signal yet" : ""),
+    kpi("Win rate", s.win_rate==null?"—":Math.round(s.win_rate*100)+"%"),
+    kpi("Commission", smoney(d.totals.commission), "Closed trades, round trip"),
+    kpi("Weekly runs", d.runs.length),
+  ].join("");
+  $("#trades").innerHTML = table([
+    {h:"Pair", f:t=>`<b>${esc(t.symbol)}</b>`}, {h:"Side", f:t=>side(t.direction)},
+    {h:"Status", f:t=>`<span class="tag ${t.status==="OPEN"?"wait":"neutral"}">${t.status}</span>`},
+    {h:"Opened", f:t=>dt(t.opened_at)}, {h:"Closed", f:t=>dt(t.closed_at)},
+    {h:"Days", num:1, f:t=>num(t.holding_hours/24,1)},
+    {h:"Entry spread", num:1, f:t=>num(t.entry_spread_points,0)},
+    {h:"Swap", num:1, f:t=>smoney(t.swap)},
+    {h:"Net", num:1, f:t=>`<b class="${cls(t.net_pnl)}">${smoney(t.net_pnl)}</b>`},
+    {h:"MAE", num:1, f:t=>smoney(t.mae_net)}, {h:"MFE", num:1, f:t=>smoney(t.mfe_net)},
+    {h:"Exit reason", f:t=>esc(t.exit_reason||"—")},
+  ], [...d.trades].sort((a,b)=>(b.opened_at||"").localeCompare(a.opened_at||"")), "No trades yet.");
+  $("#runs").innerHTML = table([
+    {h:"Week ending", f:r=>day(r.week_ending)}, {h:"Strongest", f:r=>`<b>${esc(r.strongest_currency||"—")}</b>`},
+    {h:"Weakest", f:r=>`<b>${esc(r.weakest_currency||"—")}</b>`},
+    {h:"Targets", f:r=>(r.targets_json||[]).map(t=>`${side(t.direction)} ${esc(t.symbol)} <span class="muted mono">${num(t.score,2)}</span>`).join(" &nbsp; ")||`<span class="muted">none</span>`},
+    {h:"Version", f:r=>`<span class="muted">${esc(r.strategy_version)}</span>`},
+  ], d.runs);
+  $("#fills").innerHTML = table([
+    {h:"Time (ET)", f:f=>dt(f.captured_at)}, {h:"Pair", f:f=>`<b>${esc(f.symbol)}</b>`},
+    {h:"Action", f:f=>esc(f.action)}, {h:"Ticket", f:f=>`<span class="mono">${f.ticket}</span>`},
+    {h:"Price", num:1, f:f=>num(f.fill_price,5)}, {h:"Spread (pts)", num:1, f:f=>num(f.spread_points,0)},
+    {h:"P&amp;L", num:1, f:f=>f.action==="CLOSE"?`<span class="${cls(f.pnl)}">${smoney(f.pnl)}</span>`:"—"},
+    {h:"Swap", num:1, f:f=>f.action==="CLOSE"?smoney(f.swap):"—"}, {h:"Comm.", num:1, f:f=>smoney(f.commission)},
+    {h:"Reason", f:f=>`<span class="muted">${esc(f.exit_reason||f.notes||"")}</span>`},
+  ], d.fills);
+  $("#commands").innerHTML = table([
+    {h:"Created (ET)", f:c=>dt(c.created_at)}, {h:"Action", f:c=>esc(c.action)},
+    {h:"Pair / ticket", f:c=>esc(c.symbol || (c.ticket?"#"+c.ticket:"—"))},
+    {h:"Status", f:c=>`<span class="tag ${c.status==="ACKED"?"ok":c.status==="FAILED"?"fail":c.status==="CANCELLED"?"neutral":"wait"}">${c.status}</span>`},
+    {h:"Result", f:c=>`<span class="mono">${esc(c.result||"—")}</span>`},
+    {h:"Reason", f:c=>`<span class="muted">${esc(c.reason)}</span>`},
+  ], d.commands, "No remote commands yet.");
+
+  $("#footer").textContent = `Read-only view · updated ${new Date(d.generated_at).toLocaleTimeString("en-US",ET)} ET · refreshes every minute`;
+}
+
+async function refresh() {
+  try {
+    const r = await fetch("/api/macrofx/dashboard-data", {cache:"no-store"});
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    render(await r.json());
+  } catch (e) {
+    $("#footer").textContent = "Couldn't load data: " + e.message;
+  }
+}
+let start = (location.hash || "").slice(1);
+if (!start) { try { start = localStorage.getItem("macrofx-tab") || ""; } catch (e) {} }
+if (document.getElementById("tab-" + start)) showTab(start);
+window.addEventListener("hashchange", () => { const t = location.hash.slice(1); if (document.getElementById("tab-" + t)) showTab(t); });
+refresh();
+setInterval(refresh, 60000);
+let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(refresh, 250); });
+</script>
+</body>
+</html>

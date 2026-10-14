@@ -1,3 +1,20 @@
+### 2026-10-14 — MacroFX dashboard (/macrofx)
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Requested by:** Casey — dashboard in the Railway service tracking history, status, upcoming weekly trades and swap, the changelog, potential upgrades, and plain-language rules.
+**Files:** `macrofx_dashboard.py` (new), `static/macrofx_dashboard.html` (new), `docs/MACROFX_RULES.md` (new), `docs/MACROFX_UPGRADES.md` (new), `main.py` (router registered), `requirements.txt` (+`markdown==3.7`), `tests/app_under_test.py`, `tests/test_macrofx_v2.py` (+5 tests), `tests/export_feedback.py` (read-only history export, not run), `.gitignore`.
+**What it does:** Read-only page at `/macrofx` with six tabs:
+- **Overview:** EA status, balance/equity, since-start P&L, swap, open positions with swap per day, daily equity chart.
+- **This Week:** current targets, targets vs held (close/open/hold), next run time, a live "if the model ran now" ranking, and the last official currency ranking.
+- **History:** trades with MAE/MFE, weekly runs, fills, remote commands.
+- **How It Works:** rules. **Changelog:** MacroFX sections of `changelog.md` and `DEV_LOG.md`. **Upgrades:** proposed upgrade list.
+
+Data API: `GET /api/macrofx/dashboard-data`. Docs: `GET /api/macrofx/doc/{rules|upgrades|changelog|devlog}` (markdown, or `?format=html`). No writes, no commands, claim tokens never returned. Markdown is rendered server-side, so the page has no script CDN dependency.
+**Verification:** `pytest` 33 passed / 0 failed (28 existing + 5 dashboard: page/data keys, no claim tokens, docs + path safety, read-only, next-run schedule). Local render checked with Playwright in light, dark and 390px mobile against seeded data; fixed realized-commission double count, chart label overlap and log list rendering found in those checks.
+**Access note:** The page is public and read-only, like the existing `/` dashboard and `/api/macrofx/status`. It shows the demo account's balance and positions. Add a password if that should change.
+**Not done:** Swap *rates* (expected nightly swap) need the EA to upload them (Upgrades #4); the dashboard currently shows swap already charged. Weekly target execution is still manual (Upgrades #1).
+
 ### 2026-10-13 — MacroFX Batch 1: EA entry guards on the real terminal PASSED (14/14)
 
 **Agent:** Claude

@@ -1,3 +1,9 @@
+### 2026-10-14 — MacroFX dashboard
+**Agent:** Claude (Claude Opus 5.5)
+- New read-only dashboard at `/macrofx`: Overview, This Week, History, How It Works, Changelog, Upgrades tabs.
+- Plain-language rules (`docs/MACROFX_RULES.md`) and upgrade list (`docs/MACROFX_UPGRADES.md`).
+- 33/33 backend tests pass.
+
 ### 2026-10-13 — MacroFX v2.02 demo order execution verified
 **Agent:** Claude (Claude Opus 5.5)
 - Remote CLOSE (#8984249) and OPEN_SHORT NZDUSD 0.01 (#8992632) executed on demo 1041307 via the full command lifecycle; fills and snapshots recorded; duplicate open refused by the EA (position_limit). 22/22 checks. Remote control left disabled.

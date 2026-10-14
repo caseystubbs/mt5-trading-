@@ -322,3 +322,56 @@ def test_claimed_but_unacked_command_is_never_redelivered(api, account):
     assert claim(api, account, cid).status_code == 409
     # and a fresh duplicate open for the same pair is blocked while the first is unresolved
     assert create(api, account, action="OPEN_LONG", symbol="AUDUSD", lots=0.01).status_code == 409
+
+
+# ---------- Dashboard (read-only) ----------
+
+def test_dashboard_page_and_data(api):
+    r = api.get("/macrofx")
+    assert r.status_code == 200 and "MacroFX" in r.text
+    d = api.get("/api/macrofx/dashboard-data")
+    assert d.status_code == 200, d.text
+    j = d.json()
+    for k in ("account", "remote", "positions", "runs", "active_targets", "fills", "totals",
+              "equity", "trades", "schedule", "target_diff", "preview", "model"):
+        assert k in j, k
+    assert "claim_token" not in d.text
+
+
+def test_dashboard_never_exposes_claim_tokens(api, account):
+    ready(api, account)
+    cid = create(api, account).json()["command_id"]
+    claim(api, account, cid)
+    assert "claim_token" not in api.get("/api/macrofx/dashboard-data").text
+
+
+def test_dashboard_docs(api):
+    for name in ("rules", "upgrades", "changelog", "devlog"):
+        r = api.get(f"/api/macrofx/doc/{name}")
+        assert r.status_code == 200 and len(r.text) > 100, name
+        h = api.get(f"/api/macrofx/doc/{name}?format=html")
+        assert h.status_code == 200 and "<h" in h.text, name
+    assert api.get("/api/macrofx/doc/../../etc/passwd").status_code == 404
+    assert api.get("/api/macrofx/doc/secrets").status_code == 404
+
+
+def test_dashboard_is_read_only(api):
+    before = sql("""SELECT (SELECT COUNT(*) FROM macrofx_v2_commands) c,
+                           (SELECT COUNT(*) FROM macrofx_heartbeats) h""", fetch=True)[0]
+    api.get("/api/macrofx/dashboard-data")
+    after = sql("""SELECT (SELECT COUNT(*) FROM macrofx_v2_commands) c,
+                          (SELECT COUNT(*) FROM macrofx_heartbeats) h""", fetch=True)[0]
+    assert before == after
+
+
+def test_next_weekly_run_is_friday_evening_et():
+    from datetime import datetime, timezone
+    from zoneinfo import ZoneInfo
+    from macrofx_dashboard import next_weekly_run
+    for now in (datetime(2026, 10, 14, 16, tzinfo=timezone.utc),   # Wednesday
+                datetime(2026, 10, 17, 0, 59, tzinfo=timezone.utc),  # just before
+                datetime(2026, 10, 17, 1, 1, tzinfo=timezone.utc)):  # just after
+        n = next_weekly_run(now)
+        assert n > now and (n - now).days < 7
+        et = n.astimezone(ZoneInfo("America/New_York"))
+        assert et.weekday() == 4 and et.hour in (20, 21)
