@@ -1,3 +1,10 @@
+### 2026-10-14 — Weekly approval queue, Monday execution, backtest
+**Agent:** Claude (Claude Opus 5.5)
+- Weekly plans are built automatically, approved on the dashboard, and run Monday from 4 AM ET (weekdays only, 30-point spread cap, never retries an uncertain order).
+- Every command and fill now carries signal score, strategy version and plan; each weekly run saves the full pair ranking.
+- Backtest 2000–2026 with the live engine: v1.1 shows no edge (−7.5%/yr with weekday costs, −24.9%/yr at Sunday-reopen costs). New Backtest tab. Demo only; new-signal research is next.
+- 48/48 tests pass.
+
 ### 2026-10-14 — MacroFX restart and network-outage tests passed
 **Agent:** Claude (Claude Opus 5.5)
 - An expired command is never executed after an MT4 restart; the EA reconnects by itself after an 8-minute internet outage with positions unchanged. 17/17 checks. No orders.

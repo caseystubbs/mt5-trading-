@@ -66,7 +66,10 @@ def _annualized_vol(s: pd.Series, lookback: int = 60) -> float:
     return float(x.std(ddof=1) * math.sqrt(252))
 
 def build_snapshot(close_df: pd.DataFrame) -> pd.DataFrame:
-    factors = currency_factor_returns(close_df)
+    return snapshot_from_factors(currency_factor_returns(close_df))
+
+def snapshot_from_factors(factors: pd.DataFrame) -> pd.DataFrame:
+    """Currency scores from daily currency-factor returns (same maths the live run uses)."""
     if factors.empty:
         return pd.DataFrame()
     wealth = (1.0 + factors.fillna(0.0)).cumprod()

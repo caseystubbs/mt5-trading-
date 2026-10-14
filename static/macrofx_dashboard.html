@@ -11,7 +11,7 @@
   color-scheme:light;
   --bg:#f6f5f2; --surface:#fcfcfb; --surface-2:#f0efeb; --border:#e3e1db;
   --text:#0b0b0b; --text-2:#52514e; --text-3:#7a7974;
-  --accent:#2a78d6; --series-1:#2a78d6; --series-2:#eb6834;
+  --accent:#2a78d6; --series-1:#2a78d6; --series-2:#eb6834; --series-3:#1baf7a;
   --good:#0f7b3f; --good-bg:#e5f4ea; --bad:#b42318; --bad-bg:#fbe9e7;
   --warn:#8a5a00; --warn-bg:#fdf3dc; --info-bg:#e8f1fc;
   --grid:#e7e5df;
@@ -21,7 +21,7 @@
     color-scheme:dark;
     --bg:#111110; --surface:#1a1a19; --surface-2:#222220; --border:#33322f;
     --text:#f0efec; --text-2:#c3c2b7; --text-3:#8f8e86;
-    --accent:#3987e5; --series-1:#3987e5; --series-2:#d95926;
+    --accent:#3987e5; --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70; --series-3:#199e70;
     --good:#5fcf8a; --good-bg:#16301f; --bad:#f08a80; --bad-bg:#3a1a17;
     --warn:#f0c060; --warn-bg:#3a2e12; --info-bg:#172638;
     --grid:#2b2a28;
@@ -31,7 +31,7 @@
   color-scheme:dark;
   --bg:#111110; --surface:#1a1a19; --surface-2:#222220; --border:#33322f;
   --text:#f0efec; --text-2:#c3c2b7; --text-3:#8f8e86;
-  --accent:#3987e5; --series-1:#3987e5; --series-2:#d95926;
+  --accent:#3987e5; --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70;
   --good:#5fcf8a; --good-bg:#16301f; --bad:#f08a80; --bad-bg:#3a1a17;
   --warn:#f0c060; --warn-bg:#3a2e12; --info-bg:#172638;
   --grid:#2b2a28;
@@ -97,6 +97,18 @@ td.num,th.num{text-align:right}
 .finding.bad .lv{color:var(--bad)} .finding.warn .lv{color:var(--warn)} .finding.info .lv{color:var(--accent)}
 .finding h3{display:inline;font-size:14.5px;margin:0}
 .finding p{margin:6px 0 0;color:var(--text-2)} .finding .ev{font-size:12.5px;color:var(--text-3);margin-top:4px}
+.plan{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px}
+.plan .head{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.plan .head b{font-size:15px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.actions input{font:inherit;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);min-width:200px}
+.btn{font:inherit;font-weight:600;font-size:13px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.danger{color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:default}
+.plog{margin-top:10px;font-size:12.5px;color:var(--text-2);max-height:180px;overflow:auto;border-top:1px solid var(--border);padding-top:8px}
+.plog div{padding:2px 0}
+.msg{font-size:13px;margin-left:4px}
 .bar{height:6px;background:var(--surface-2);border-radius:3px;margin-top:8px;overflow:hidden}
 .bar > i{display:block;height:100%;background:var(--accent);border-radius:3px}
 .empty{padding:18px;color:var(--text-3);text-align:center}
@@ -119,6 +131,7 @@ footer{color:var(--text-3);font-size:12px;padding:20px 0}
       <button role="tab" data-tab="week">This Week</button>
       <button role="tab" data-tab="history">History</button>
       <button role="tab" data-tab="feedback">Feedback</button>
+      <button role="tab" data-tab="backtest">Backtest</button>
       <button role="tab" data-tab="rules">How It Works</button>
       <button role="tab" data-tab="changelog">Changelog</button>
       <button role="tab" data-tab="upgrades">Upgrades</button>
@@ -137,6 +150,9 @@ footer{color:var(--text-3);font-size:12px;padding:20px 0}
   </section>
 
   <section class="tab" id="tab-week">
+    <h2>This week's plan</h2>
+    <p class="sub">Built automatically after each Friday run. Nothing trades until it's approved. Approved plans run Monday from 4 AM ET (weekdays 4 AM–4 PM ET only), closes first, then opens.</p>
+    <div id="plan"></div>
     <div id="week-banner"></div>
     <div class="grid two">
       <div>
@@ -210,6 +226,19 @@ footer{color:var(--text-3);font-size:12px;padding:20px 0}
     <div class="md" id="review"></div>
   </section>
 
+  <section class="tab" id="tab-backtest">
+    <div class="grid kpis" id="bt-kpis"></div>
+    <h2>Growth of $1, 2000–2026</h2>
+    <p class="sub">Weekly, log scale. Same signal, three ways of paying for it.</p>
+    <div class="chart" id="bt-chart"></div>
+    <h2>All variants</h2>
+    <div class="tablewrap" id="bt-table"></div>
+    <h2>Year by year (v1.1, weekday execution)</h2>
+    <div class="tablewrap" id="bt-years"></div>
+    <h2>Report</h2>
+    <div class="md" id="doc-backtest"><p class="muted">Loading…</p></div>
+  </section>
+
   <section class="tab" id="tab-rules"><div class="md" id="doc-rules"><p class="muted">Loading…</p></div></section>
   <section class="tab" id="tab-changelog">
     <div class="seg" role="group">
@@ -256,6 +285,7 @@ function showTab(name) {
   document.querySelectorAll("section.tab").forEach(s => s.classList.toggle("active", s.id === "tab-" + name));
   if (name === "rules") loadDoc("rules", "#doc-rules");
   if (name === "upgrades") loadDoc("upgrades", "#doc-upgrades");
+  if (name === "backtest") { loadDoc("backtest", "#doc-backtest"); loadBacktest(); }
   if (name === "changelog") loadDoc(document.querySelector(".seg [aria-pressed=true]").dataset.doc, "#doc-changelog");
   try { localStorage.setItem("macrofx-tab", name); } catch (e) {}
   history.replaceState(null, "", "#" + name);
@@ -349,9 +379,10 @@ function render(d) {
   equityChart(d.equity);
 
   // This week
+  renderPlan(d);
   const diff = d.target_diff, needs = diff.to_open.length + diff.to_close.length;
-  $("#week-banner").innerHTML = `<div class="banner ${needs?"warn":"info"}"><div><b>${needs?`${needs} change${needs>1?"s":""} needed to match the model`:"Positions match the model's targets"}</b>
-    EA v2.02 does not act on weekly targets automatically. After each Friday run, changes have to be sent as commands (see Upgrades #1).</div></div>`;
+  $("#week-banner").innerHTML = needs ? `<div class="banner info"><div><b>${needs} difference${needs>1?"s":""} between the targets and what's held</b>
+    Only an approved plan changes positions. If you traded by hand, use “Rebuild plan” so the plan matches what's held now.</div></div>` : "";
   const lr = d.latest_run;
   $("#targets-sub").textContent = lr ? `From the run for the week ending ${day(lr.week_ending)} (${lr.strategy_version}). Strongest ${lr.strongest_currency}, weakest ${lr.weakest_currency}.` : "No weekly run yet.";
   $("#targets").innerHTML = table([
@@ -366,7 +397,7 @@ function render(d) {
   $("#next-run").innerHTML = [
     kpi("Runs", dt(d.schedule.next_run_utc) + " ET", "Every Friday 9 PM ET (8 PM in winter)"),
     kpi("Uses", "Daily closes", "Through Friday's close, all 28 pairs"),
-    kpi("Execution", "Manual / command", "Not automatic on EA v2.02"),
+    kpi("Execution", "After approval", "Monday 4 AM ET, weekdays only"),
   ].join("");
   const pv = d.preview || {};
   if (pv.available) {
@@ -437,7 +468,72 @@ function render(d) {
   ], d.commands, "No remote commands yet.");
 
   renderFeedback(d);
-  $("#footer").textContent = `Read-only view · updated ${new Date(d.generated_at).toLocaleTimeString("en-US",ET)} ET · refreshes every minute`;
+  $("#footer").textContent = `Updated ${new Date(d.generated_at).toLocaleTimeString("en-US",ET)} ET · refreshes every minute`;
+}
+
+let adminKey = "";   // kept in memory only, never stored
+const PSTATE = {PROPOSED:["wait","Waiting for approval"], APPROVED:["ok","Approved, scheduled"], EXECUTING:["wait","Executing"],
+  DONE:["ok","Done"], NO_CHANGES:["neutral","No changes needed"], REJECTED:["neutral","Rejected"], CANCELLED:["neutral","Cancelled"],
+  SUPERSEDED:["neutral","Replaced by newer plan"], EXPIRED:["neutral","Expired"], FAILED:["fail","Finished with failures"],
+  NEEDS_REVIEW:["fail","Needs review"]};
+const SSTATE = {PENDING:"neutral", RETRY:"wait", SENT:"wait", DONE:"ok", SKIPPED:"neutral", FAILED:"fail", UNCERTAIN:"fail"};
+function renderPlan(d) {
+  const ps = d.proposals || [];
+  const p = ps.find(x => !["SUPERSEDED"].includes(x.status)) || ps[0];
+  if (!p) { $("#plan").innerHTML = `<div class="plan"><span class="muted">No plan yet. One is built automatically from the latest weekly run once the EA reports its positions.</span></div>`; return; }
+  const [cls_, label] = PSTATE[p.status] || ["neutral", p.status];
+  const steps = p.steps_json || [];
+  const keep = (p.positions_json && p.positions_json.keep) || [];
+  const rows = [...steps.map(s => ({...s})), ...keep.map(k => ({kind:"HOLD", symbol:k.symbol, direction:k.direction, ticket:k.ticket, reason:"still a target", status:""}))];
+  const canDecide = p.status === "PROPOSED", canCancel = ["APPROVED","EXECUTING"].includes(p.status);
+  const when = p.execute_after ? dt(p.execute_after) + " ET" : "—";
+  $("#plan").innerHTML = `<div class="plan">
+    <div class="head"><b>Plan #${p.id}</b><span class="tag ${cls_}">${label.toUpperCase()}</span>
+      <span class="muted">Week ending ${day(p.week_ending)} · built ${dt(p.created_at)} ET · runs ${when}</span></div>
+    ${table([
+      {h:"Step", f:r=>`<span class="tag ${r.kind==="CLOSE"?"fail":r.kind==="OPEN"?"wait":"ok"}">${r.kind}</span>`},
+      {h:"Pair", f:r=>`<b>${esc(r.symbol)}</b>`}, {h:"Side", f:r=>side(r.direction)},
+      {h:"Ticket", f:r=>r.ticket?`<span class="mono">${r.ticket}</span>`:"—"},
+      {h:"Score", num:1, f:r=>r.score!=null?num(r.score,3):"—"},
+      {h:"Why", f:r=>esc(r.reason||"")},
+      {h:"Status", f:r=>r.status?`<span class="tag ${SSTATE[r.status]||"neutral"}">${r.status}</span> <span class="mono muted">${esc(r.result||"")}</span>`:""},
+    ], rows, "Nothing to do.")}
+    <div class="actions">
+      ${canDecide||canCancel||p.status!=="EXECUTING" ? `<input type="password" id="akey" placeholder="Admin key" autocomplete="off" value="${esc(adminKey)}">` : ""}
+      ${canDecide ? `<button class="btn primary" data-act="approve">Approve for Monday 4 AM ET</button>
+                     <button class="btn" data-act="approve-now">Approve &amp; run at next window</button>
+                     <button class="btn danger" data-act="reject">Reject</button>` : ""}
+      ${canCancel ? `<button class="btn danger" data-act="cancel">Cancel</button>` : ""}
+      ${p.status!=="EXECUTING" ? `<button class="btn" data-act="regenerate">Rebuild plan from current positions</button>` : ""}
+      <span class="msg" id="pmsg"></span>
+    </div>
+    <div class="muted" style="font-size:12px;margin-top:6px">Opens are only sent if the spread is ${num(d.exec_max_spread,0)} points or less; otherwise they retry hourly. An order the EA claims but never confirms is never retried — the plan stops for review.</div>
+    <div class="plog">${(p.log_json||[]).slice().reverse().map(l=>`<div><span class="mono muted">${dt(l.at)}</span> · ${esc(l.msg)}</div>`).join("")}</div>
+  </div>`;
+  document.querySelectorAll("#plan [data-act]").forEach(b => b.onclick = () => planAction(p.id, b.dataset.act));
+}
+document.addEventListener("input", e => { if (e.target && e.target.id === "akey") adminKey = e.target.value; });
+async function planAction(id, act) {
+  const k = ($("#akey") && $("#akey").value.trim()) || adminKey;
+  if (!k) { $("#pmsg").textContent = "Enter the admin key first."; return; }
+  const confirmText = {approve:"Approve this plan to run Monday from 4 AM ET?", "approve-now":"Approve and run at the next weekday window (4 AM–4 PM ET)?",
+    reject:"Reject this plan? Nothing will trade this week unless you rebuild it.", cancel:"Cancel this plan and switch remote control off?",
+    regenerate:"Rebuild this week's plan from the positions held right now?"}[act];
+  if (!confirm(confirmText)) return;
+  const url = act === "regenerate" ? "/api/macrofx/v2/admin/proposals/regenerate"
+    : `/api/macrofx/v2/admin/proposals/${id}/${act === "approve-now" ? "approve?run_now=true" : act}`;
+  document.querySelectorAll("#plan .btn").forEach(b => b.disabled = true);
+  try {
+    const r = await fetch(url, {method:"POST", headers:{"X-MacroFX-Admin-Key": k}});
+    if (r.status === 403) { adminKey = ""; throw new Error("Wrong admin key"); }
+    if (!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || "HTTP " + r.status);
+    adminKey = k;
+    await refresh();
+    $("#pmsg").textContent = "Saved.";
+  } catch (e) {
+    $("#pmsg").textContent = e.message;
+    document.querySelectorAll("#plan .btn").forEach(b => b.disabled = false);
+  }
 }
 
 function renderFeedback(d) {
@@ -495,6 +591,70 @@ function renderFeedback(d) {
     {h:"Status", f:r=>`<span class="tag ${/^Enough|^Measured/.test(r.status)?"ok":"wait"}">${esc(r.status)}</span>`},
   ], A.research||[]);
   $("#review").innerHTML = d.review_html || `<p class="muted">No weekly review yet.</p>`;
+}
+
+let BT = null;
+async function loadBacktest() {
+  if (!BT) {
+    const r = await fetch("/api/macrofx/backtest");
+    if (!r.ok) { $("#bt-kpis").innerHTML = `<div class="empty">No backtest yet.</div>`; return; }
+    BT = await r.json();
+  }
+  const V = Object.fromEntries(BT.variants.map(v => [v.name, v]));
+  const base = V["v1.1 · weekday execution"], sun = V["v1.1 · Sunday-reopen execution"], raw = V["v1.1 · no costs (signal only)"];
+  const p = (x, d=1) => x == null ? "—" : (x > 0 ? "+" : x < 0 ? "−" : "") + num(Math.abs(x*100), d) + "%";
+  $("#bt-kpis").innerHTML = [
+    kpi("Yearly return (weekday)", p(base.all.cagr), `${BT.meta.data_first.slice(0,4) === "1999" ? "2000" : BT.meta.data_first.slice(0,4)}–${BT.meta.data_last.slice(0,4)}`, cls(base.all.cagr)),
+    kpi("Sharpe ratio", num(base.all.sharpe, 2), "above ~0.5 would be interesting", cls(base.all.sharpe)),
+    kpi("Signal before costs", p(raw.all.cagr), "per year", cls(raw.all.cagr)),
+    kpi("If traded at Sunday reopen", p(sun.all.cagr), "per year", cls(sun.all.cagr)),
+    kpi("Worst drawdown", p(base.all.max_drawdown, 0), "weekday execution", "neg"),
+    kpi("Beat random picks", Math.round(BT.random.model_beats_pct_of_random*100) + "%", `of ${BT.random.runs} random runs`),
+  ].join("");
+  btChart([["Signal before costs", raw.curve, "var(--series-1)"], ["Weekday execution", base.curve, "var(--series-2)"], ["Sunday-reopen execution", sun.curve, "var(--series-3)"]]);
+  $("#bt-table").innerHTML = table([
+    {h:"Variant", f:v=>`<b>${esc(v.name)}</b>`},
+    {h:"Per year", num:1, f:v=>`<span class="${cls(v.all.cagr)}">${p(v.all.cagr)}</span>`},
+    {h:"Sharpe", num:1, f:v=>num(v.all.sharpe,2)},
+    {h:"Max DD", num:1, f:v=>p(v.all.max_drawdown,0)},
+    {h:"t-stat", num:1, f:v=>num(v.all.t_stat,2)},
+    {h:"2000–12", num:1, f:v=>p(v.first.cagr)}, {h:"2013–26", num:1, f:v=>p(v.second.cagr)},
+    {h:"Win rate", num:1, f:v=>Math.round(v.all.win_rate*100)+"%"},
+    {h:"Trades/yr", num:1, f:v=>num(v.all.trades_per_year,0)},
+    {h:"Cost/yr", num:1, f:v=>p(-v.all.cost_drag_per_year)},
+  ], BT.variants);
+  const ys = Object.entries(base.yearly);
+  $("#bt-years").innerHTML = table([{h:"Year", f:r=>r[0]}, {h:"Return", num:1, f:r=>`<span class="${cls(r[1])}">${p(r[1])}</span>`},
+    {h:"", f:r=>`<span style="display:inline-block;height:8px;border-radius:2px;width:${Math.min(160,Math.abs(r[1])*300)}px;background:${r[1]>=0?"var(--good)":"var(--bad)"};opacity:.6"></span>`}],
+    ys.slice().reverse());
+}
+function btChart(series) {
+  const el = $("#bt-chart");
+  const W = Math.max(320, el.clientWidth - 32), H = 260, P = {l:54, r:12, t:10, b:26};
+  const all = series.flatMap(s => s[1].map(x => x[1])).filter(v => v > 0);
+  const lo = Math.log10(Math.min(...all)), hi = Math.log10(Math.max(...all, 1));
+  const n = Math.max(...series.map(s => s[1].length));
+  const x = i => P.l + i * (W-P.l-P.r) / (n-1), y = v => P.t + (hi - Math.log10(v)) * (H-P.t-P.b) / (hi - lo || 1);
+  const ticks = []; for (let e = Math.floor(lo); e <= Math.ceil(hi); e++) ticks.push(10**e);
+  const dates = series[0][1].map(x => x[0]);
+  const xl = []; let last = -1e9; dates.forEach((d,i) => { if (d.slice(5,7) <= "02" && x(i)-last > 60 && +d.slice(0,4) % 2 === 0) { xl.push(i); last = x(i); } });
+  el.innerHTML = `<div class="legend">${series.map(s=>`<span><i style="background:${s[2]}"></i>${s[0]}</span>`).join("")}</div>
+  <svg width="${W}" height="${H}" role="img" aria-label="Growth of one dollar for three cost scenarios, log scale">
+    ${ticks.filter(t=>Math.log10(t)>=lo-0.01&&Math.log10(t)<=hi+0.01).map(t=>`<line x1="${P.l}" x2="${W-P.r}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)"/><text x="${P.l-8}" y="${y(t)+4}" text-anchor="end" font-size="11" fill="var(--text-3)" font-family="JetBrains Mono">$${t>=1?num(t,0):t>=0.01?num(t,2):t.toExponential(0)}</text>`).join("")}
+    <line x1="${P.l}" x2="${W-P.r}" y1="${y(1)}" y2="${y(1)}" stroke="var(--text-3)" stroke-dasharray="3 3"/>
+    ${xl.map(i=>`<text x="${x(i)}" y="${H-6}" text-anchor="middle" font-size="11" fill="var(--text-3)">${dates[i].slice(0,4)}</text>`).join("")}
+    ${series.map(s=>`<path d="${s[1].map((p,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(Math.max(p[1],1e-9)).toFixed(1)}`).join("")}" fill="none" stroke="${s[2]}" stroke-width="2" stroke-linejoin="round"/>`).join("")}
+    <line id="bxh" y1="${P.t}" y2="${H-P.b}" stroke="var(--text-3)" stroke-dasharray="3 3" visibility="hidden"/>
+    <rect x="${P.l}" y="${P.t}" width="${W-P.l-P.r}" height="${H-P.t-P.b}" fill="transparent" id="bhit"/>
+  </svg><div class="tip" id="btip"></div>`;
+  const svg = el.querySelector("svg"), tip = $("#btip"), xh = svg.querySelector("#bxh");
+  svg.querySelector("#bhit").addEventListener("pointermove", e => {
+    const i = Math.max(0, Math.min(n-1, Math.round((e.offsetX-P.l)/((W-P.l-P.r)/(n-1)))));
+    xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("visibility", "visible");
+    tip.innerHTML = `<b>${day(dates[i])}</b>` + series.map(s => `<div class="r"><span>${s[0]}</span><span class="mono">$${num(s[1][i]?.[1], 3)}</span></div>`).join("");
+    tip.style.display = "block"; tip.style.left = Math.min(x(i)+28, el.clientWidth-240) + "px"; tip.style.top = "40px";
+  });
+  svg.querySelector("#bhit").addEventListener("pointerleave", () => { tip.style.display = "none"; xh.setAttribute("visibility","hidden"); });
 }
 
 async function refresh() {

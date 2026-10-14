@@ -21,6 +21,12 @@ TEST_DB = os.environ.get("TEST_DATABASE_URL", "postgresql://postgres@127.0.0.1:5
 EA_KEY = "test-ea-key"
 ADMIN_KEY = "test-admin-key"
 
+# In-process imports (analysis, executor) read these at import time.
+os.environ["DATABASE_URL"] = TEST_DB
+os.environ["EA_API_KEY"] = EA_KEY
+os.environ["MACROFX_ADMIN_KEY"] = ADMIN_KEY
+os.environ.pop("MACROFX_API_KEY", None)
+
 
 def sql(query, *args, fetch=False):
     async def run():

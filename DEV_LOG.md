@@ -1,3 +1,44 @@
+### 2026-10-14 — Weekly approval queue, Monday execution, complete records, backtest
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5
+**Requested by:** Casey — "do all 4": (1) approval queue + Monday execution + records, (2) backtest, (3) hold strategy changes, (4) housekeeping.
+**Files:** `macrofx_proposals.py` (new), `macrofx_control_v2.py`, `macrofx.py`, `macrofx_engine.py` (`snapshot_from_factors` split out; identical maths), `macrofx_dashboard.py`, `static/macrofx_dashboard.html`, `main.py`, `scripts/backtest_macrofx.py` (new), `docs/backtest/results.json` + `REPORT.md` (new), `docs/MACROFX_RULES.md`, `docs/MACROFX_UPGRADES.md`, `tests/test_proposals.py` (new, 12 tests), `tests/conftest.py`, `tests/app_under_test.py`.
+
+**1. Weekly plan → approval → Monday execution** (`macrofx_proposals.py`)
+- An executor loop runs inside the Dashboard service (every 30 s, Postgres advisory lock, single runner). After each weekly run it builds a plan from the EA's latest position snapshot: closes first, then opens, 2-position cap. Status is NO_CHANGES when what's held already matches.
+- Nothing trades until approved. Approve / Reject / Cancel / Rebuild are on the dashboard (This Week tab) and need `MACROFX_ADMIN_KEY`. The key is held only in page memory.
+- Approved plans run from Monday 04:00 ET (DST-aware), only Mon–Fri 04:00–16:00 ET, one step at a time through the normal v2 command path (claim token, EA checks).
+- Opens run with a 30-point spread cap; a spread block retries hourly, up to 8 times.
+- A command not claimed within 5 min is cancelled and resent (up to 4 tries).
+- Claimed but not acknowledged after 3 min → NEEDS_REVIEW; never retried. The same applies to `local_safety_block` and broker errors.
+- Revalidated before every step: fresh heartbeat (≤3 min), demo, EA v2.x; closes skip tickets already closed; opens skip pairs already held. A position closed by hand is never reopened that week.
+- Remote control is on only while a step is in flight and switched off at every terminal state.
+- Older unstarted plans are superseded by a newer run; unapproved plans expire after 7 days.
+
+**2. Complete records**
+- Commands carry `signal_score`, `strategy_version`, `proposal_id`.
+- On ACK the matching fill (posted by the EA just before the ack) is tagged; plan trades are labelled `target_open` / `target_removed`, so the analysis counts them as model trades.
+- Weekly runs save the full 28-pair ranking (`pair_ranking_json`); this applies to the weekly service after the merge to main.
+
+**3. Backtest** (`scripts/backtest_macrofx.py`)
+- Data: Fed H.10 daily rates (datasets/exchange-rates on GitHub), 1999-01-04 to 2026-10-09, 28 crosses built from 7 USD rates.
+- Uses the live engine functions. The live path (520 calendar days of closes) and the backtest path (factor slice) were verified identical to ~1e-14 on 3 dates, with identical targets.
+- 1,397 weekly rebalances, 2000–2026; each position at 1× equity notional.
+- Results:
+  - v1.1 with weekday costs (1 pip/side): −7.5%/yr, Sharpe −0.30, max DD −89%, t −1.55.
+  - Before costs: −6.5%/yr.
+  - Sunday-reopen costs (20 pips/side): −24.9%/yr.
+  - Rotation buffer 0.25: −7.2%/yr (trades 57 → 31/yr). Volatility stop 2×: −7.6%/yr.
+  - Both halves negative (2000–12 −7.2%, 2013–26 −7.7%).
+  - v1.1 beat 17% of 30 random-pair runs.
+- Independent recomputation agrees (gross Sharpe −0.25). Single-horizon checks (1/3/6/12 months) all have Sharpe ≤ 0.
+- Swap not modelled. Conclusion: **no evidence of an edge**; keep demo-only and research a different signal (Upgrades #11).
+
+**Dashboard:** plan panel on This Week, new Backtest tab (growth-of-$1 log chart, variants, year by year, report).
+**Verification:** `pytest` 48 passed / 0 failed. Twelve new tests run a simulated EA end to end: full rotation with approval, no approval no trades, wrong/missing key 403, outside window, before schedule, spread retry hourly with no immediate resend, claimed-but-unacked → NEEDS_REVIEW with no retry, manual close respected and not reopened, reject/cancel, stale EA blocks, public endpoint clean. Local render checked with Playwright.
+**Holds (item 3):** no signal changes, size increase or live account; recorded in Upgrades #7/#8/#10/#11.
+
 ### 2026-10-14 — MacroFX Batch 2: terminal restart + network outage PASSED (17/17)
 
 **Agent:** Claude

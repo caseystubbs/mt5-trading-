@@ -9,9 +9,11 @@ Strategy version: **macrofx-v1.1**. Bridge version: **EA v2.02**.
 
 1. **All week**, the EA on the MT4 terminal sends Railway the account balance, open positions and daily closing prices for 28 currency pairs, every minute.
 2. **Every Friday at 9 PM ET** (8 PM ET in winter), Railway runs the model on those prices and writes the **weekly targets**: the list of positions the model says to hold next week.
-3. **Trades are placed by command.** Railway sends the EA a specific command such as "close ticket 8984249" or "open NZDUSD short 0.01". The EA claims the command, checks its own safety rules, trades, and reports back.
+3. **A weekly plan is built automatically** from those targets: which positions to close and which to open. Nothing trades until a person **approves** the plan on the dashboard (This Week tab, admin key required).
+4. **Approved plans run Monday from 4 AM ET**, after the London open and away from the wide Sunday-reopen spreads. Steps go one at a time, closes first, then opens, only on weekdays between 4 AM and 4 PM ET.
+5. **Each step is a command.** Railway sends the EA a specific command such as "close ticket 8984249" or "open NZDUSD short 0.01". The EA claims it, checks its own safety rules, trades, and reports back.
 
-> **Current status:** EA v2.02 does **not** turn the weekly targets into trades by itself. The *This Week* tab shows the differences between the targets and what is held; someone has to act on them. Automating this, with an approval step, is upgrade #1.
+> **Backtest result (Oct 2026):** over 2000–2026 the v1.1 signal had no edge, even before costs. It runs on the demo to prove the system, not to make money. See the Backtest tab.
 
 
 ## 2. How a currency is scored
@@ -100,7 +102,25 @@ Remote settings can only make limits **stricter** than the EA's local settings, 
 4. It reports back with the token as **ACKED** (done) or **FAILED** (refused, with the reason). Nobody else can overwrite that result.
 5. A command that was claimed but never reported back stays **CLAIMED** for a human to review. It is **never retried automatically**, because the order might have gone through.
 
-## 9. Research discipline
+## 9. The weekly plan, step by step
+
+| Plan status | Meaning |
+|---|---|
+| Waiting for approval | Built from Friday's targets and what's held. Nothing will trade. |
+| No changes needed | What's held already matches the targets. |
+| Approved, scheduled | Will start at its scheduled time (normally Monday 4 AM ET). |
+| Executing | Steps are being sent one at a time. |
+| Done | Every step finished (some may be skipped, e.g. a position you already closed). |
+| Needs review | Something uncertain happened (e.g. the EA took an order but never confirmed it). Nothing more is sent; remote control is switched off. Check MT4. |
+| Rejected / Cancelled / Replaced / Expired | Stopped by you, replaced by a newer week's plan, or never approved within 7 days. |
+
+Rules the plan follows:
+- **A position you close by hand is never reopened** during that week. Use "Rebuild plan" if you want the plan to reflect manual trades.
+- **Opens only go through if the spread is 30 points (3 pips) or less**; otherwise they retry every hour (up to 8 times).
+- **If the EA is offline**, the plan waits; it never sends commands to a stale connection.
+- **Remote control is only switched on while a step is in flight**, and switched off when the plan ends.
+
+## 10. Research discipline
 
 - The weekly report is a **feedback loop, not an auto-optimizer**. Nothing changes the rules automatically.
 - Never change the time periods or thresholds because of one trade or one bad week.

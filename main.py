@@ -138,7 +138,14 @@ async def close_db():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    executor = None
+    if os.environ.get("MACROFX_EXECUTOR", "1") == "1":
+        import asyncio
+        from macrofx_proposals import executor_loop
+        executor = asyncio.create_task(executor_loop())
     yield
+    if executor:
+        executor.cancel()
     await close_db()
 
 app = FastAPI(
@@ -155,6 +162,9 @@ app.include_router(macrofx_control_v2_router)
 
 from macrofx_dashboard import router as macrofx_dashboard_router
 app.include_router(macrofx_dashboard_router)
+
+from macrofx_proposals import router as macrofx_proposals_router
+app.include_router(macrofx_proposals_router)
 
 app.add_middleware(
     CORSMiddleware,

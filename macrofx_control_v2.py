@@ -45,6 +45,9 @@ CREATE TABLE IF NOT EXISTS macrofx_v2_commands (
 );
 ALTER TABLE macrofx_v2_commands ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ;
 ALTER TABLE macrofx_v2_commands ADD COLUMN IF NOT EXISTS claim_token TEXT;
+ALTER TABLE macrofx_v2_commands ADD COLUMN IF NOT EXISTS signal_score DOUBLE PRECISION;
+ALTER TABLE macrofx_v2_commands ADD COLUMN IF NOT EXISTS strategy_version TEXT;
+ALTER TABLE macrofx_v2_commands ADD COLUMN IF NOT EXISTS proposal_id BIGINT;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='macrofx_v2_commands_status_check_v2') THEN
     ALTER TABLE macrofx_v2_commands DROP CONSTRAINT IF EXISTS macrofx_v2_commands_status_check;
@@ -77,6 +80,8 @@ class CommandCreate(BaseModel):
     ticket: int = 0
     lots: float = 0
     reason: str = Field(min_length=3, max_length=500)
+    signal_score: float | None = None
+    strategy_version: str | None = Field(default=None, max_length=40)
 
 class CommandAck(BaseModel):
     account_id: str
@@ -164,9 +169,11 @@ async def create_command(body: CommandCreate, x_macrofx_admin_key: str = Header(
                     raise HTTPException(409,"A close command for this ticket is already pending or in flight")
             cid=uuid.uuid4()
             await conn.execute("""
-              INSERT INTO macrofx_v2_commands(command_id,account_id,action,symbol,ticket,lots,reason,expires_at)
-              VALUES($1,$2,$3,$4,$5,$6,$7,NOW()+INTERVAL '5 minutes')""",
-              cid,body.account_id,body.action,symbol,body.ticket,body.lots,body.reason)
+              INSERT INTO macrofx_v2_commands(command_id,account_id,action,symbol,ticket,lots,reason,expires_at,
+                signal_score,strategy_version)
+              VALUES($1,$2,$3,$4,$5,$6,$7,NOW()+INTERVAL '5 minutes',$8,$9)""",
+              cid,body.account_id,body.action,symbol,body.ticket,body.lots,body.reason,
+              body.signal_score,body.strategy_version)
             if body.action=="PAUSE_ENTRIES":
                 # Pausing is fail-safe: latch it server-side immediately so it survives
                 # the EA re-reading settings on its next poll.
@@ -235,9 +242,46 @@ async def acknowledge(account_id: str, command_id: uuid.UUID, status: str, resul
           WHERE command_id=$1 AND account_id=$2 AND status='CLAIMED'
             AND claim_token IS NOT NULL AND claim_token=$5
           RETURNING command_id""",command_id,account_id,status,result[:1000],claim_token)
+        if updated and status == "ACKED":
+            await annotate_fill(conn, account_id, command_id, result)
     if not updated:
         raise HTTPException(409,"Command already handled or expired")
     return {"status":"ok"}
+
+
+async def annotate_fill(conn, account_id: str, command_id, result: str):
+    """Copy the command's signal score / version onto the broker fill the EA just posted.
+
+    The EA posts the fill before it acknowledges, and remote fills carry no score.
+    Fills from an approved weekly plan are labelled as model trades (target_open /
+    target_removed) so the analysis can tell them apart from manual or test commands.
+    """
+    cmd = await conn.fetchrow("""SELECT action,ticket,signal_score,strategy_version,proposal_id
+        FROM macrofx_v2_commands WHERE command_id=$1""", command_id)
+    if not cmd:
+        return
+    ticket = None
+    if result.startswith("opened_ticket_"):
+        try:
+            ticket = int(result.rsplit("_", 1)[1])
+        except ValueError:
+            return
+        kind = "OPEN%"
+        note = "target_open" if cmd["proposal_id"] else None
+    elif result == "closed" and cmd["ticket"]:
+        ticket = int(cmd["ticket"])
+        kind = "CLOSE"
+        note = "target_removed" if cmd["proposal_id"] else None
+    if ticket is None:
+        return
+    await conn.execute("""UPDATE macrofx_fills SET
+          signal_score = COALESCE($4, signal_score),
+          strategy_version = COALESCE($5, strategy_version),
+          notes = COALESCE($6, notes),
+          exit_reason = CASE WHEN $6 = 'target_removed' THEN 'target_removed' ELSE exit_reason END
+        WHERE id = (SELECT id FROM macrofx_fills WHERE account_id=$1 AND ticket=$2 AND action LIKE $3
+                    AND captured_at > NOW() - INTERVAL '30 minutes' ORDER BY captured_at DESC LIMIT 1)""",
+        account_id, ticket, kind, cmd["signal_score"], cmd["strategy_version"], note)
 
 @router.get("/admin/commands")
 async def list_commands(account_id: str, x_macrofx_admin_key: str = Header(default="")):

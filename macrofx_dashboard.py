@@ -27,6 +27,7 @@ from macrofx import get_pool
 from macrofx_engine import HORIZONS, MAX_POSITIONS, MIN_ABS_PAIR_SCORE, MIN_AGREEMENT, build_snapshot, choose_targets, pair_scores
 from macrofx_feedback import build_feedback_snapshot
 from macrofx_analysis import analyze
+from macrofx_proposals import list_proposals, EXEC_MAX_SPREAD
 
 router = APIRouter(tags=["macrofx-dashboard"])
 
@@ -221,6 +222,12 @@ async def dashboard_data():
     except Exception as e:
         out["analysis"] = {"error": str(e)[:200]}
     out["review_html"] = _md_html(review) if review else None
+    try:
+        out["proposals"] = _clean(await list_proposals(pool, ACCOUNT, 8))
+    except Exception as e:
+        out["proposals"] = []
+        out["proposals_error"] = str(e)[:200]
+    out["exec_max_spread"] = EXEC_MAX_SPREAD
 
     nxt = next_weekly_run(now)
     out["schedule"] = {"next_run_utc": nxt.isoformat(), "next_run_et": nxt.astimezone(ET).isoformat()}
@@ -273,7 +280,21 @@ DOCS = {
     "upgrades": lambda: open(os.path.join(ROOT, "docs", "MACROFX_UPGRADES.md"), encoding="utf-8").read(),
     "changelog": lambda: _macro_sections(os.path.join(ROOT, "changelog.md")),
     "devlog": lambda: _macro_sections(os.path.join(ROOT, "DEV_LOG.md")),
+    "backtest": lambda: open(os.path.join(ROOT, "docs", "backtest", "REPORT.md"), encoding="utf-8").read(),
 }
+
+
+@router.get("/api/macrofx/backtest")
+async def backtest_results():
+    try:
+        with open(os.path.join(ROOT, "docs", "backtest", "results.json"), encoding="utf-8") as f:
+            d = json.load(f)
+    except FileNotFoundError:
+        raise HTTPException(404, "No backtest has been run yet")
+    return {"meta": d["meta"], "random": d["results"].get("_random_benchmark"),
+            "variants": [{"name": k, "all": v["all"], "first": v["2000-2012"], "second": v["2013-2026"],
+                          "yearly": v["yearly"], "curve": v["curve"]}
+                         for k, v in d["results"].items() if not k.startswith("_")]}
 
 
 def _md_html(text: str) -> str:
