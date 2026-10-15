@@ -31,6 +31,7 @@ Expected trimmed-blend result: gross Sharpe 0.2–0.4, net 0.1–0.25, max drawd
 
 **Verified:** reviewer's factual claims checked against `docs/backtest/REPORT.md` (12-month −0.02; random benchmark 30 runs), `docs/research/notes/retail_implementation_and_data.md` (GBP rate to Jan 2026, JPY from Apr 2002, Euribor splice), and the Alpha Architect summary of Dahlquist & Hasseltoft (5 variables, 3–5-year trends). Upgrades page rendered locally with the dashboard's `_md_html`: 6 tables, no unparsed table lines.
 **Not done / open:** the plan has not been revised per the review; that waits for Casey's decision. Railway access to FRED/BIS/CFTC is still unconfirmed.
+**Deployed:** commit `5a89b51` pushed to `main`; the Dashboard service auto-deployed. Verified live 2026-10-15 03:30 UTC: `/api/macrofx/doc/upgrades` contains the plan and Independent review #1 (6 tables rendered), `/macrofx` returns 200, and the Changelog tab shows the new entry.
 
 ### 2026-10-14 — MacroFX research: can a G8 FX system work long term?
 
