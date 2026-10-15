@@ -1,3 +1,37 @@
+### 2026-10-14 — MacroFX Signal v2 plan written for review; independent AI rating
+
+**Agent:** Claude
+**Model:** Claude Opus 5.5 (reviewer: a separate Claude Opus 5.5 subagent)
+**Requested by:** Casey — "Write the plan in the upgrade tab I want someone to rate what we came up with."
+**Files:** `docs/MACROFX_UPGRADES.md` (new "Signal v2 plan — draft for review" section with reviewer scorecard; "Independent review #1"; #9 and #11 cross-references). Docs only; no code, signal, risk or trading changes.
+
+**Plan (proposed, not built):**
+- Monthly ranking of 8 currencies on value, carry, macro trend and trend (25% each).
+- Long #1/#8 and #2/#7; at most 2 pairs at 0.01 lots, demo only, through the approval queue.
+- Filters: swap cost limit, carry own-volatility control, COT crowding, VIX switch (comparison only).
+- Add-ons: news-surprise index, central bank tone, dollar carry.
+- Tracked-only opinion sources: ING forecasts, FXStreet poll, X/YouTube analysts, AI digest.
+- Data sources, pre-written pass criteria (from `docs/research/LONG_TERM_FX_SYSTEMS.md`), build order.
+
+**Correction made while writing:** in conversation I had endorsed a "cut carry when VIX spikes" rule. Our own research report (`LONG_TERM_FX_SYSTEMS.md`; `notes/fx_carry_evidence.md`) says that rule lacks support:
+- VIX moves arrive with carry losses rather than before them.
+- Rising VIX predicted higher carry returns 3–4 quarters later.
+- Equity-volatility timing gave carry alpha −1.28.
+
+The plan therefore uses the carry book's own volatility (Moreira & Muir) and keeps VIX only as a comparison expected to fail. The weekly v1.1 momentum engine was replaced by 12-month trend for the same reason (research says abandon it).
+
+**Independent review #1 (AI, fresh context, read-only): overall 3/5, "worth building as a narrowed research test, not as income."** Key findings:
+1. The "trend" score as written is a cross-sectional 12-month ranking, the abandoned factor. `REPORT.md` shows −0.02 for that ranking; the 0.11 cited was time-series trend. It also divides by zero for USD.
+2. Multiple-testing risk on the already-used 2000–2026 data. Recommendation: one primary hypothesis (carry + value 50/50, monthly), pre-2000 and NOK/SEK as a holdout, and a monthly random benchmark with 1,000+ runs.
+3. Macro trend doesn't follow Dahlquist & Hasseltoft (3–5-year trends in IP, retail sales, unemployment, CPI, PPI; no rates).
+4. Filters: the 2% swap veto double-counts carry; COT is unsupported; drop VIX.
+5. Live/backtest mismatch (MidasFX swap vs 3-month rates; manual overrides).
+
+Expected trimmed-blend result: gross Sharpe 0.2–0.4, net 0.1–0.25, max drawdown 35–50%. Clean pass about 1 in 3.
+
+**Verified:** reviewer's factual claims checked against `docs/backtest/REPORT.md` (12-month −0.02; random benchmark 30 runs), `docs/research/notes/retail_implementation_and_data.md` (GBP rate to Jan 2026, JPY from Apr 2002, Euribor splice), and the Alpha Architect summary of Dahlquist & Hasseltoft (5 variables, 3–5-year trends). Upgrades page rendered locally with the dashboard's `_md_html`: 6 tables, no unparsed table lines.
+**Not done / open:** the plan has not been revised per the review; that waits for Casey's decision. Railway access to FRED/BIS/CFTC is still unconfirmed.
+
 ### 2026-10-14 — MacroFX research: can a G8 FX system work long term?
 
 **Agent:** Claude

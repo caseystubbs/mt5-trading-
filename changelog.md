@@ -1,3 +1,8 @@
+### 2026-10-14 — MacroFX Signal v2 plan published for review (Upgrades tab)
+**Agent:** Claude (Claude Opus 5.5)
+- **Draft plan on the Upgrades tab:** a monthly blend of value, carry, macro trend and trend across 8 currencies, with filters, tracked-only opinion sources, data sources, pre-written pass criteria and a reviewer scorecard. Proposed only; nothing built or trading.
+- **Independent AI review: 3/5.** Worth building as a narrowed research test, not as income. Main fixes: drop or rework the trend score (as written it revives abandoned momentum), test one primary hypothesis (carry + value) with a pre-2000 holdout, move macro trend to add-ons, drop the VIX and COT filters. Plan not yet revised.
+
 ### 2026-10-14 — MacroFX long-term FX research published
 **Agent:** Claude (Claude Opus 5.5)
 - Deep-research report on whether a G8 FX system can work long term, now on the dashboard's Backtest tab (`docs/research/LONG_TERM_FX_SYSTEMS.md`).
